@@ -7,21 +7,21 @@ on:
 
 jobs:
   release:
-    name: Create release if version changed
+    name: Create release and publish if version changed
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # needed to create GitHub releases
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # need previous commit to diff package.json
+          fetch-depth: 2
 
       - name: Check if version changed
         id: version
         run: |
-          PREV=$(git show HEAD~1:package.json 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null || echo "none")
-          CURR=$(node -pe "require('./package.json').version")
+          PREV=$(git show HEAD~1:package.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo "none")
+          CURR=$(jq -r '.version' package.json)
           echo "previous=$PREV"
           echo "current=$CURR"
           echo "previous=$PREV" >> $GITHUB_OUTPUT
@@ -37,6 +37,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: https://registry.npmjs.org/
 
       - name: Install dependencies
         if: steps.version.outputs.changed == 'true'
@@ -50,15 +51,25 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: npm run build
 
+      - name: Publish to npm
+        if: steps.version.outputs.changed == 'true'
+        # Skip prepublishOnly since we already tested and built above
+        run: npm publish --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Create GitHub release
         if: steps.version.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.current }}"
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
-            --notes "Release v${VERSION}" \
-            --latest
-
-      # npm publish is handled by npm-publish.yml, which triggers on release creation above
+          # Skip if tag already exists (e.g. re-run of same commit)
+          if gh release view "v${VERSION}" &>/dev/null; then
+            echo "Release v${VERSION} already exists, skipping."
+          else
+            gh release create "v${VERSION}" \
+              --title "v${VERSION}" \
+              --notes "Release v${VERSION}" \
+              --latest
+          fi
