@@ -69,16 +69,11 @@ jobs:
       - name: Publish to npm via OIDC
         if: steps.version.outputs.changed == 'true'
         run: |
-          echo "=== .npmrc contents ==="
-          cat "${NPM_CONFIG_USERCONFIG}" || echo "(no npmrc)"
-          echo "=== OIDC env vars ==="
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL=${ACTIONS_ID_TOKEN_REQUEST_URL:+(set)}"
-          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN=${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+(set)}"
-          echo "=== npm version ==="
-          npm --version
-          echo "=== publishing ==="
+          # Remove token from .npmrc so npm falls through to OIDC
           sed -i '/^\/\/registry.npmjs.org\/:_authToken/d' "${NPM_CONFIG_USERCONFIG}"
-          cat "${NPM_CONFIG_USERCONFIG}"
+          # Unset NODE_AUTH_TOKEN env var — npm checks this directly and it
+          # takes precedence over OIDC if set, even to an empty value
+          unset NODE_AUTH_TOKEN
           npm publish --provenance --access public
 
       - name: Create git tag and GitHub release
