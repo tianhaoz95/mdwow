@@ -68,9 +68,10 @@ jobs:
 
       - name: Publish to npm via OIDC
         if: steps.version.outputs.changed == 'true'
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ''  # explicitly empty so npm uses OIDC, not the token
+        run: |
+          # Remove the _authToken line setup-node wrote so npm uses OIDC instead
+          sed -i '/^\/\/registry.npmjs.org\/:_authToken/d' "${NPM_CONFIG_USERCONFIG}"
+          npm publish --provenance --access public
 
       - name: Create git tag and GitHub release
         if: steps.version.outputs.changed == 'true'
