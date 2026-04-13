@@ -3,7 +3,7 @@
 A beautiful, live Markdown viewer for the terminal. Open any `.md` file and get a rich, colorful TUI preview that **auto-updates** whenever the file changes on disk.
 
 ```
-npx mdwow README.md
+npx mdwow-cli README.md
 ```
 
 ---
@@ -11,63 +11,32 @@ npx mdwow README.md
 ## Features
 
 - **Live file watching** — edit your Markdown in any editor and the preview updates instantly
-- **Vibrant color theme** — headings, code blocks, blockquotes, tables, and lists are all distinctly styled
-- **Full Markdown support** — GFM (GitHub Flavored Markdown): tables, strikethrough, task lists, and more
-- **Keyboard navigation** — scroll through long documents with vim-style keys
+- **Syntax highlighting** — fenced code blocks are highlighted for 200+ languages
+- **Mermaid diagrams** — renders flowcharts, sequence diagrams, ER diagrams, and more as ASCII art
+- **Table of contents** — press `b` to open a sidebar TOC and jump to any heading
+- **Clickable links** — hover or click a link to pin its URL in the status bar for terminal handling
+- **Mouse scroll** — scroll with trackpad or mouse wheel
+- **Reading width** — adjust content column width with `+` / `-`
+- **Vibrant color theme** — H1–H6 each have a distinct color; code, blockquotes, tables all styled
+- **Full GFM support** — tables, strikethrough, task lists, and more
+- **Keyboard navigation** — vim-style keys throughout
 - **Zero config** — works out of the box, no configuration needed
-- **npx friendly** — run without installing: `npx mdwow file.md`
 
 ---
 
-## Preview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  mdwow  ·  README.md                    ⬤ live  10:32:01│
-├─────────────────────────────────────────────────────────┤
-│  ═══════════════════════════════════════                 │
-│    My Project                                           │
-│  ═══════════════════════════════════════                 │
-│                                                         │
-│  A paragraph with bold and italic text.                 │
-│                                                         │
-│  ── Features ──                                         │
-│  ────────────────────────────────────                   │
-│                                                         │
-│  • Live file watching                                   │
-│  • Vibrant color theme                                  │
-│                                                         │
-│  ┌─ js ──────────────────────────────┐                  │
-│  │ console.log("hello world");       │                  │
-│  └───────────────────────────────────┘                  │
-│                                                         │
-│  │ A blockquote with a colored border                   │
-├─────────────────────────────────────────────────────────┤
-│  ↑↓/jk scroll  ·  u/d page  ·  g/G top/bottom  ·  q quit│
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## Usage
+## Installation
 
 ### Run without installing
 
 ```bash
-npx mdwow <file>
+npx mdwow-cli <file>
 ```
 
 ### Install globally
 
 ```bash
-npm install -g mdwow
+npm install -g mdwow-cli
 mdwow <file>
-```
-
-### Install from GitHub
-
-```bash
-npx github:tianhaozhou/mdwow <file>
 ```
 
 ### Examples
@@ -90,22 +59,43 @@ mdwow ~/notes/todo.md
 | `d` / `PgDn` | Page down |
 | `g` | Jump to top |
 | `G` | Jump to bottom |
-| `r` | Force reload |
+| `b` | Toggle table of contents sidebar |
+| `+` | Widen content column |
+| `-` | Narrow content column |
+| `0` | Reset content width |
 | `q` / `Ctrl+C` | Quit |
+
+### In the TOC sidebar
+
+| Key | Action |
+|-----|--------|
+| `↑` / `k` | Move cursor up |
+| `↓` / `j` | Move cursor down |
+| `Enter` | Jump to heading |
+| `b` / `Esc` | Close sidebar |
+
+### Mouse
+
+| Action | Effect |
+|--------|--------|
+| Scroll wheel | Scroll document |
+| Hover over link | Pin URL in status bar |
+| Click link | Pin URL in status bar (use terminal's Cmd+click to open) |
 
 ---
 
 ## Supported Markdown
 
-- Headings (H1–H6) with distinct visual styles
-- Paragraphs with **bold**, _italic_, and ~~strikethrough~~ inline formatting
-- `Inline code` with highlighted background
-- Fenced code blocks with language label and border
-- Blockquotes with colored left border
-- Unordered and ordered lists (with nesting)
-- Tables (GFM)
-- Horizontal rules
-- Links and images (images shown as alt text)
+- **Headings H1–H6** — each level has a distinct color and visual style
+- **Paragraphs** — bold, italic, strikethrough, inline code, links
+- **Fenced code blocks** — syntax highlighted, language label, bordered
+- **Mermaid diagrams** — rendered as Unicode ASCII art inline
+- **Blockquotes** — colored left border, supports nesting
+- **Lists** — unordered (`•`) and ordered, nested
+- **Tables** — GFM tables with aligned columns
+- **Horizontal rules**
+- **Links** — URL shown in status bar on hover/click
+- **Images** — shown as `[image: alt text]` placeholder
 
 ---
 
@@ -119,7 +109,7 @@ mdwow ~/notes/todo.md
 ### Setup
 
 ```bash
-git clone https://github.com/tianhaozhou/mdwow.git
+git clone https://github.com/tianhaoz95/mdwow.git
 cd mdwow
 npm install
 ```
@@ -130,7 +120,15 @@ npm install
 npm run dev -- README.md
 ```
 
-This uses `tsx` to run TypeScript directly without a build step.
+Uses `tsx` to run TypeScript directly — no build step needed.
+
+### Preview with test file
+
+```bash
+npm run preview
+```
+
+Builds and opens `TEST.md`, which exercises all supported Markdown elements.
 
 ### Build
 
@@ -147,50 +145,56 @@ npm test            # run all tests once
 npm run test:watch  # watch mode
 ```
 
-Tests use [Vitest](https://vitest.dev/) and [ink-testing-library](https://github.com/vadimdemedes/ink-testing-library).
+344 tests covering the parser, renderer, all node components, mouse/scroll logic, TOC, and link detection.
 
 ### Project Structure
 
 ```
 mdwow/
 ├── src/
-│   ├── cli.tsx                    # Entry point, arg parsing
-│   ├── app.tsx                    # Root Ink component
+│   ├── cli.tsx                    # Entry point, arg parsing, mouse cleanup
+│   ├── app.tsx                    # Root component, input handling, layout
 │   ├── theme.ts                   # Color/style constants
 │   ├── hooks/
-│   │   ├── useFileWatcher.ts      # chokidar file watcher hook
-│   │   └── useScrolling.ts        # Scroll state + keyboard handler
+│   │   ├── useFileWatcher.ts      # chokidar live-reload hook
+│   │   ├── useMouseScroll.ts      # SGR mouse reporting lifecycle
+│   │   └── useToc.ts              # TOC sidebar cursor/active state
 │   ├── utils/
-│   │   └── parser.ts              # remark Markdown → AST
+│   │   ├── parser.ts              # remark Markdown → AST
+│   │   ├── renderer.ts            # AST → ANSI string lines + link spans + TOC
+│   │   ├── mouse.ts               # SGR mouse escape sequence parser
+│   │   └── openUrl.ts             # Cross-platform URL opener (unused, kept for reference)
 │   └── components/
-│       ├── Header.tsx             # Top bar (filename, live indicator)
-│       ├── StatusBar.tsx          # Bottom bar (keyboard hints, scroll position)
-│       ├── MarkdownRenderer.tsx   # AST → Ink components dispatcher
+│       ├── Header.tsx             # Top bar (filename, live indicator, timestamp)
+│       ├── StatusBar.tsx          # Bottom bar (hints, scroll %, link URL)
+│       ├── Sidebar.tsx            # TOC sidebar
 │       ├── ErrorView.tsx          # Error display
-│       └── nodes/
-│           ├── Heading.tsx        # H1–H6
-│           ├── Paragraph.tsx      # Paragraphs
-│           ├── InlineContent.tsx  # Inline formatting (bold, italic, code, links)
-│           ├── CodeBlock.tsx      # Fenced code blocks
-│           ├── Blockquote.tsx     # Blockquotes
-│           ├── List.tsx           # Ordered and unordered lists
-│           ├── Table.tsx          # GFM tables
-│           └── HorizontalRule.tsx # Thematic breaks
+│       └── nodes/                 # Ink components (used by tests)
+│           ├── Heading.tsx
+│           ├── Paragraph.tsx
+│           ├── InlineContent.tsx
+│           ├── CodeBlock.tsx
+│           ├── Blockquote.tsx
+│           ├── List.tsx
+│           ├── Table.tsx
+│           └── HorizontalRule.tsx
 ├── tests/
 │   ├── parser.test.ts
 │   ├── theme.test.ts
-│   ├── useScrolling.test.ts
-│   └── components/
-│       ├── Heading.test.tsx
-│       ├── CodeBlock.test.tsx
-│       ├── Blockquote.test.tsx
-│       ├── List.test.tsx
-│       ├── Table.test.tsx
-│       └── MarkdownRenderer.test.tsx
+│   ├── renderer.test.ts
+│   ├── mouse.test.ts
+│   ├── toc.test.ts
+│   ├── links.test.ts
+│   ├── ui/                        # Visual output tests (ink-testing-library)
+│   └── components/                # Component unit tests
+├── scripts/
+│   ├── preview.sh                 # Build + open TEST.md
+│   └── keytest.mjs                # Mouse/keyboard event inspector
+├── TEST.md                        # Test document covering all elements
 ├── design/
-│   ├── design.md                  # Design document
-│   └── implementation-plan.md    # Implementation plan
-├── build.mjs                      # esbuild bundle script
+│   ├── design.md
+│   └── implementation-plan.md
+├── build.mjs
 ├── tsconfig.json
 ├── vitest.config.ts
 └── package.json
@@ -205,10 +209,12 @@ mdwow/
 | [unified](https://unifiedjs.com/) + [remark](https://remark.js.org/) | Markdown parsing |
 | [remark-gfm](https://github.com/remarkjs/remark-gfm) | GFM support (tables, strikethrough) |
 | [chokidar](https://github.com/paulmillr/chokidar) | Cross-platform file watching |
+| [cli-highlight](https://github.com/felixfbecker/cli-highlight) | Terminal syntax highlighting |
+| [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) | Mermaid → ASCII art |
 | [meow](https://github.com/sindresorhus/meow) | CLI argument parsing |
 | [TypeScript](https://www.typescriptlang.org/) | Type safety |
 | [esbuild](https://esbuild.github.io/) | Fast bundling |
-| [Vitest](https://vitest.dev/)) | Testing |
+| [Vitest](https://vitest.dev/) | Testing |
 
 ---
 
