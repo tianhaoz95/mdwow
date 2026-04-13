@@ -112,7 +112,7 @@ function renderHeading(node: Heading, width: number): string[] {
   const { depth } = node;
 
   if (depth === 1) {
-    const bar = chalk.magentaBright('═'.repeat(Math.min(width, 78)));
+    const bar = chalk.magentaBright('═'.repeat(width));
     return [
       '',
       bar,
@@ -122,10 +122,11 @@ function renderHeading(node: Heading, width: number): string[] {
     ];
   }
   if (depth === 2) {
-    const underline = chalk.cyanBright.dim('─'.repeat(Math.min(40, width)));
+    const underline = chalk.cyanBright.dim('─'.repeat(width));
+    const label = `── ${text} ──`;
     return [
       '',
-      chalk.bold.cyanBright(`── ${text} ──`),
+      chalk.bold.cyanBright(label),
       underline,
     ];
   }
@@ -147,7 +148,7 @@ function renderParagraph(node: Paragraph, width: number): string[] {
 }
 
 function renderCode(node: Code, width: number): string[] {
-  const innerWidth = Math.min(width - 2, 74);
+  const innerWidth = Math.max(10, width - 2);
   const langLabel = node.lang ? ` ${node.lang} ` : '';
   const topFill = '─'.repeat(Math.max(0, innerWidth - langLabel.length));
   const topBorder = chalk.cyan.dim(`┌${topFill}${langLabel}┐`);
@@ -264,7 +265,7 @@ function renderTable(node: Table, width: number): string[] {
 }
 
 function renderHr(width: number): string[] {
-  return [chalk.cyan.dim('─'.repeat(Math.min(width - 4, 76))), ''];
+  return [chalk.cyan.dim('─'.repeat(Math.max(1, width))), ''];
 }
 
 // ── top-level ─────────────────────────────────────────────────────────────────

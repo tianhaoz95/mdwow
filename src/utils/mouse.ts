@@ -8,8 +8,8 @@ export type MouseEvent = {
 /**
  * Parse an SGR extended mouse escape sequence.
  *
- * Format: ESC [ < Cb ; Cx ; Cy M   (press/scroll)
- *         ESC [ < Cb ; Cx ; Cy m   (release)
+ * Accepts both the full sequence (ESC [ < Cb ; Cx ; Cy M) and the
+ * ESC-stripped variant that Ink passes through useInput ([< Cb ; Cx ; Cy M).
  *
  * Button byte meanings relevant to scrolling:
  *   64 = scroll up
@@ -20,11 +20,15 @@ export type MouseEvent = {
 export function parseSgrMouse(data: Buffer): MouseEvent | null {
   const str = data.toString('binary');
 
-  // Must start with ESC [ <
-  const idx = str.indexOf('\x1b[<');
-  if (idx === -1) return null;
-
-  const rest = str.slice(idx + 3);
+  // Accept both ESC[< (full) and [< (Ink-stripped)
+  let rest: string | null = null;
+  const fullIdx = str.indexOf('\x1b[<');
+  if (fullIdx !== -1) {
+    rest = str.slice(fullIdx + 3);
+  } else if (str.startsWith('[<')) {
+    rest = str.slice(2);
+  }
+  if (rest === null) return null;
   // Match: button;x;y followed by M (press) or m (release)
   const match = rest.match(/^(\d+);(\d+);(\d+)([Mm])/);
   if (!match) return null;

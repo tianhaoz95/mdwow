@@ -6,6 +6,7 @@ type StatusBarProps = {
   scrollOffset: number;
   totalLines: number;
   visibleLines: number;
+  readingWidth: number | null;
 };
 
 type HintProps = {
@@ -22,10 +23,12 @@ function Hint({ keys, label }: HintProps) {
   );
 }
 
-export function StatusBar({ scrollOffset, totalLines, visibleLines }: StatusBarProps) {
+export function StatusBar({ scrollOffset, totalLines, visibleLines, readingWidth }: StatusBarProps) {
   const currentLine = Math.min(scrollOffset + 1, totalLines);
   const scrollPercent =
-    totalLines <= visibleLines ? 100 : Math.round((scrollOffset / Math.max(1, totalLines - visibleLines)) * 100);
+    totalLines <= visibleLines
+      ? 100
+      : Math.round((scrollOffset / Math.max(1, totalLines - visibleLines)) * 100);
 
   return (
     <Box
@@ -39,12 +42,17 @@ export function StatusBar({ scrollOffset, totalLines, visibleLines }: StatusBarP
         <Hint keys="↑↓/jk" label="scroll" />
         <Hint keys="u/d" label="page" />
         <Hint keys="g/G" label="top/bottom" />
+        <Hint keys="+/-" label="width" />
         <Hint keys="q" label="quit" />
-        <Hint keys="r" label="reload" />
       </Box>
-      <Text {...theme.scrollInfo}>
-        {`${currentLine}/${totalLines} (${scrollPercent}%)`}
-      </Text>
+      <Box gap={2}>
+        {readingWidth !== null && (
+          <Text {...theme.statusKey}>{`width ${readingWidth}`}</Text>
+        )}
+        <Text {...theme.scrollInfo}>
+          {`${currentLine}/${totalLines} (${scrollPercent}%)`}
+        </Text>
+      </Box>
     </Box>
   );
 }

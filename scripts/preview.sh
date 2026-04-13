@@ -7,5 +7,5 @@ ROOT="$SCRIPT_DIR/.."
 echo "Building..."
 node "$ROOT/build.mjs"
 
-echo "Launching mdwow with README.md..."
-node "$ROOT/dist/cli.js" "$ROOT/README.md"
+echo "Launching mdwow with TEST.md..."
+node "$ROOT/dist/cli.js" "$ROOT/TEST.md"
