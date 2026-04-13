@@ -13,6 +13,7 @@ jobs:
   release:
     name: Tag, release, and publish if version changed
     runs-on: ubuntu-latest
+    environment: publish_npm
 
     steps:
       - uses: actions/checkout@v4
