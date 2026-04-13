@@ -66,15 +66,11 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Publish to npm via OIDC
+      - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
-        run: |
-          # Remove token from .npmrc so npm falls through to OIDC
-          sed -i '/^\/\/registry.npmjs.org\/:_authToken/d' "${NPM_CONFIG_USERCONFIG}"
-          # Unset NODE_AUTH_TOKEN env var — npm checks this directly and it
-          # takes precedence over OIDC if set, even to an empty value
-          unset NODE_AUTH_TOKEN
-          npm publish --provenance --access public
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create git tag and GitHub release
         if: steps.version.outputs.changed == 'true'
