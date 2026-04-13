@@ -7,6 +7,7 @@ type StatusBarProps = {
   totalLines: number;
   visibleLines: number;
   readingWidth: number | null;
+  tocOpen: boolean;
 };
 
 type HintProps = {
@@ -23,7 +24,7 @@ function Hint({ keys, label }: HintProps) {
   );
 }
 
-export function StatusBar({ scrollOffset, totalLines, visibleLines, readingWidth }: StatusBarProps) {
+export function StatusBar({ scrollOffset, totalLines, visibleLines, readingWidth, tocOpen }: StatusBarProps) {
   const currentLine = Math.min(scrollOffset + 1, totalLines);
   const scrollPercent =
     totalLines <= visibleLines
@@ -43,6 +44,7 @@ export function StatusBar({ scrollOffset, totalLines, visibleLines, readingWidth
         <Hint keys="u/d" label="page" />
         <Hint keys="g/G" label="top/bottom" />
         <Hint keys="+/-" label="width" />
+        <Hint keys="b" label={tocOpen ? 'close toc' : 'toc'} />
         <Hint keys="q" label="quit" />
       </Box>
       <Box gap={2}>

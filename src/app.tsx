@@ -3,18 +3,19 @@ import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { basename } from 'path';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
+import { Sidebar, SIDEBAR_WIDTH } from './components/Sidebar.js';
 import { ErrorView } from './components/ErrorView.js';
 import { useFileWatcher } from './hooks/useFileWatcher.js';
 import { useMouseScroll } from './hooks/useMouseScroll.js';
+import { useToc } from './hooks/useToc.js';
 import { parseMarkdown } from './utils/parser.js';
-import { renderToLines } from './utils/renderer.js';
+import { renderToLines, buildToc } from './utils/renderer.js';
 import { parseSgrMouse } from './utils/mouse.js';
 
 type AppProps = {
   filePath: string;
 };
 
-// Reading width step per keypress (columns)
 const WIDTH_STEP = 10;
 
 export function App({ filePath }: AppProps) {
@@ -23,20 +24,11 @@ export function App({ filePath }: AppProps) {
 
   const terminalWidth = stdout?.columns ?? 80;
   const terminalHeight = stdout?.rows ?? 24;
-
-  // Reserve 3 rows for header (border + content + border) and 3 for status bar
   const visibleLines = Math.max(1, terminalHeight - 6);
 
   const { content, error, lastUpdated, isWatching } = useFileWatcher(filePath);
 
-  // Reading width: null = full pane width. + narrows it (focus), - widens it.
-  // Clamped between 40 and terminalWidth.
   const [readingWidth, setReadingWidth] = useState<number | null>(null);
-  const effectiveWidth = readingWidth ?? terminalWidth;
-  const clampedWidth = Math.min(Math.max(40, effectiveWidth), terminalWidth);
-
-  // Center the content column within the pane
-  const leftMargin = Math.floor((terminalWidth - clampedWidth) / 2);
 
   // Parse AST once per content change
   const ast = useMemo(() => {
@@ -44,7 +36,30 @@ export function App({ filePath }: AppProps) {
     try { return parseMarkdown(content); } catch { return null; }
   }, [content]);
 
-  // Render to ANSI lines at the current reading width
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  // TOC entries — recomputed when AST or width changes (width affects line counts)
+  // We use terminalWidth here because buildToc needs to match renderToLines widths
+  const tocEntries = useMemo(() => {
+    if (!ast) return [];
+    // Use the content width that renderToLines will use (before sidebar adjustment)
+    const w = Math.min(Math.max(40, readingWidth ?? terminalWidth), terminalWidth);
+    return buildToc(ast, w);
+  }, [ast, readingWidth, terminalWidth]);
+
+  const toc = useToc(tocEntries, scrollOffset);
+
+  // When sidebar is open, shrink content area to make room
+  const sidebarOpen = toc.isOpen;
+  const contentAreaWidth = sidebarOpen
+    ? Math.max(40, terminalWidth - SIDEBAR_WIDTH - 1)
+    : terminalWidth;
+
+  const effectiveWidth = readingWidth ?? contentAreaWidth;
+  const clampedWidth = Math.min(Math.max(40, effectiveWidth), contentAreaWidth);
+  const leftMargin = sidebarOpen ? 0 : Math.floor((terminalWidth - clampedWidth) / 2);
+
+  // Render lines at the effective content width
   const lines = useMemo(() => {
     if (!ast) return [];
     return renderToLines(ast, clampedWidth);
@@ -52,8 +67,6 @@ export function App({ filePath }: AppProps) {
 
   const totalLines = lines.length;
   const maxScroll = Math.max(0, totalLines - visibleLines);
-
-  const [scrollOffset, setScrollOffset] = useState(0);
 
   // Clamp scroll when content or width changes
   useEffect(() => {
@@ -73,31 +86,60 @@ export function App({ filePath }: AppProps) {
       return;
     }
 
-    // Mouse scroll
+    // Mouse events
     if (input.startsWith('[<')) {
       const mouse = parseSgrMouse(Buffer.from(input));
       if (mouse?.type === 'scroll_up')   setScrollOffset((prev) => clamp(prev - 3));
       if (mouse?.type === 'scroll_down') setScrollOffset((prev) => clamp(prev + 3));
+
+      // Click in sidebar: detect by x position (sidebar occupies columns 0..SIDEBAR_WIDTH-1)
+      if (mouse?.type === 'press' && sidebarOpen && mouse.x <= SIDEBAR_WIDTH) {
+        // y=1 is terminal row 1; sidebar content starts after border+title+separator = row 3
+        const clickedEntryIndex = Math.max(0, toc.cursorIndex - Math.floor((visibleLines) / 2))
+          + (mouse.y - 4); // 4 = border(1) + title(1) + separator(1) + 1-indexed
+        if (clickedEntryIndex >= 0 && clickedEntryIndex < tocEntries.length) {
+          toc.setCursor(clickedEntryIndex);
+          const entry = tocEntries[clickedEntryIndex];
+          if (entry) setScrollOffset(clamp(entry.lineIndex));
+        }
+      }
       return;
     }
 
-    // Reading width: + widens, - narrows, 0 resets to full pane width
+    // Sidebar-specific keys when open
+    if (sidebarOpen) {
+      if (key.escape || input === 'b') { toc.close(); return; }
+      if (key.upArrow || input === 'k') { toc.moveCursor(-1); return; }
+      if (key.downArrow || input === 'j') { toc.moveCursor(1); return; }
+      if (key.return) {
+        const entry = tocEntries[toc.cursorIndex];
+        if (entry) {
+          setScrollOffset(clamp(entry.lineIndex));
+          toc.close();
+        }
+        return;
+      }
+      return; // swallow all other keys while sidebar is open
+    }
+
+    // Toggle sidebar
+    if (input === 'b') { toc.toggle(); return; }
+
+    // Reading width
     if (input === '+' || input === '=') {
       setReadingWidth((w) => {
-        const next = (w ?? terminalWidth) + WIDTH_STEP;
-        return next >= terminalWidth ? null : next;
+        const next = (w ?? contentAreaWidth) + WIDTH_STEP;
+        return next >= contentAreaWidth ? null : next;
       });
       return;
     }
     if (input === '-' || input === '_') {
-      setReadingWidth((w) => Math.max(40, (w ?? terminalWidth) - WIDTH_STEP));
+      setReadingWidth((w) => Math.max(40, (w ?? contentAreaWidth) - WIDTH_STEP));
       return;
     }
-    if (input === '0') {
-      setReadingWidth(null);
-      return;
-    }
+    if (input === '0') { setReadingWidth(null); return; }
 
+    // Scroll
     const pageSize = Math.max(1, visibleLines - 2);
     setScrollOffset((prev) => {
       if (key.upArrow || input === 'k') return clamp(prev - 1);
@@ -112,31 +154,43 @@ export function App({ filePath }: AppProps) {
 
   const visibleContent = lines.slice(scrollOffset, scrollOffset + visibleLines);
   const filename = basename(filePath);
-  const isNarrowed = readingWidth !== null;
+
+  const contentBox = error ? (
+    <ErrorView message={error} />
+  ) : !ast ? (
+    <Box padding={2}><Text dimColor>Loading...</Text></Box>
+  ) : (
+    <Box flexDirection="column" marginLeft={leftMargin} width={clampedWidth}>
+      {visibleContent.map((line, i) => (
+        <Text key={scrollOffset + i} wrap="truncate-end">{line || ' '}</Text>
+      ))}
+    </Box>
+  );
 
   return (
     <Box flexDirection="column" height={terminalHeight}>
       <Header filename={filename} isLive={isWatching} lastUpdated={lastUpdated} />
 
-      <Box flexDirection="column" flexGrow={1} overflow="hidden">
-        {error ? (
-          <ErrorView message={error} />
-        ) : !ast ? (
-          <Box padding={2}><Text dimColor>Loading...</Text></Box>
-        ) : (
-          <Box flexDirection="column" marginLeft={leftMargin} width={clampedWidth}>
-            {visibleContent.map((line, i) => (
-              <Text key={scrollOffset + i} wrap="truncate-end">{line || ' '}</Text>
-            ))}
-          </Box>
+      <Box flexDirection="row" flexGrow={1} overflow="hidden">
+        {sidebarOpen && (
+          <Sidebar
+            entries={tocEntries}
+            cursorIndex={toc.cursorIndex}
+            activeIndex={toc.activeIndex}
+            height={visibleLines}
+          />
         )}
+        <Box flexDirection="column" flexGrow={1} overflow="hidden">
+          {contentBox}
+        </Box>
       </Box>
 
       <StatusBar
         scrollOffset={scrollOffset}
         totalLines={totalLines}
         visibleLines={visibleLines}
-        readingWidth={isNarrowed ? clampedWidth : null}
+        readingWidth={readingWidth !== null ? clampedWidth : null}
+        tocOpen={sidebarOpen}
       />
     </Box>
   );

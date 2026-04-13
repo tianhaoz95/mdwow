@@ -364,3 +364,62 @@ export function renderToLines(ast: Root, width = 80): string[] {
 
   return out;
 }
+
+// ── Table of contents ─────────────────────────────────────────────────────────
+
+export type TocEntry = {
+  depth: number;
+  text: string;
+  lineIndex: number; // index in the lines array where the heading text appears
+};
+
+/**
+ * Walk the AST in the same order as renderToLines and record the line index
+ * of each heading's text line. Must stay in sync with renderToLines.
+ */
+export function buildToc(ast: Root, width = 80): TocEntry[] {
+  const contentWidth = width - 4;
+  const entries: TocEntry[] = [];
+  let lineCount = 0;
+
+  for (const node of ast.children as Content[]) {
+    switch (node.type) {
+      case 'heading': {
+        const h = node as Heading;
+        const plain = stripAnsi(renderInlines(h.children as PhrasingContent[]));
+        // H1: ['', bar, text, bar, ''] → text at offset 2
+        // H2: ['', text, underline]    → text at offset 1
+        // H3–H6: ['', text]            → text at offset 1
+        const textOffset = h.depth === 1 ? 2 : 1;
+        entries.push({ depth: h.depth, text: plain, lineIndex: lineCount + textOffset });
+        lineCount += renderHeading(h, contentWidth).length;
+        break;
+      }
+      case 'paragraph':
+        lineCount += renderParagraph(node as Paragraph, contentWidth).length;
+        break;
+      case 'code':
+        lineCount += renderCode(node as Code, contentWidth).length;
+        break;
+      case 'blockquote':
+        lineCount += renderBlockquote(node as Blockquote, contentWidth).length;
+        break;
+      case 'list':
+        lineCount += renderListItems(node as List, contentWidth).length;
+        break;
+      case 'table':
+        lineCount += renderTable(node as Table, contentWidth).length;
+        break;
+      case 'thematicBreak':
+        lineCount += renderHr(contentWidth).length;
+        break;
+      case 'html':
+        lineCount += 2; // value + blank line
+        break;
+      default:
+        break;
+    }
+  }
+
+  return entries;
+}
