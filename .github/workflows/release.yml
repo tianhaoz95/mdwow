@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    name: Create release and publish if version changed
+    name: Tag and release if version changed
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,31 +32,16 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set up Node.js
+      - name: Create and push tag
         if: steps.version.outputs.changed == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org/
-
-      - name: Install dependencies
-        if: steps.version.outputs.changed == 'true'
-        run: npm ci
-
-      - name: Run tests
-        if: steps.version.outputs.changed == 'true'
-        run: npm test
-
-      - name: Build
-        if: steps.version.outputs.changed == 'true'
-        run: npm run build
-
-      - name: Publish to npm
-        if: steps.version.outputs.changed == 'true'
-        # Skip prepublishOnly since we already tested and built above
-        run: npm publish --ignore-scripts
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.current }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
 
       - name: Create GitHub release
         if: steps.version.outputs.changed == 'true'
@@ -64,12 +49,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.current }}"
-          # Skip if tag already exists (e.g. re-run of same commit)
-          if gh release view "v${VERSION}" &>/dev/null; then
-            echo "Release v${VERSION} already exists, skipping."
-          else
-            gh release create "v${VERSION}" \
-              --title "v${VERSION}" \
-              --notes "Release v${VERSION}" \
-              --latest
-          fi
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes "Release v${VERSION}" \
+            --latest
