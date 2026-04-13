@@ -2,7 +2,14 @@
  * Pure string renderer: Markdown AST → array of ANSI-colored strings (one per line).
  * No React/Ink involved. This makes scrolling instant — we just slice the array.
  */
+
+// cli-highlight uses chalk internally and checks chalk.level for color support.
+// Set FORCE_COLOR before any imports so its chalk instance picks it up.
+process.env.FORCE_COLOR = '3';
+
 import chalk from 'chalk';
+import { highlight as cliHighlight, supportsLanguage } from 'cli-highlight';
+import { renderMermaidASCII } from 'beautiful-mermaid';
 import type {
   Root,
   Content,
@@ -148,15 +155,68 @@ function renderParagraph(node: Paragraph, width: number): string[] {
 }
 
 function renderCode(node: Code, width: number): string[] {
+  const lang = node.lang?.toLowerCase() ?? '';
+
+  // ── Mermaid: render as ASCII diagram ──────────────────────────────────────
+  if (lang === 'mermaid') {
+    return renderMermaidBlock(node.value, width);
+  }
+
+  // ── Regular code block with syntax highlighting ───────────────────────────
   const innerWidth = Math.max(10, width - 2);
   const langLabel = node.lang ? ` ${node.lang} ` : '';
   const topFill = '─'.repeat(Math.max(0, innerWidth - langLabel.length));
   const topBorder = chalk.cyan.dim(`┌${topFill}${langLabel}┐`);
   const bottomBorder = chalk.cyan.dim(`└${'─'.repeat(innerWidth)}┘`);
-  const lines = node.value.split('\n');
+
+  // Syntax highlight if the language is recognised, else fall back to plain green
+  let highlighted: string;
+  try {
+    if (lang && supportsLanguage(lang)) {
+      highlighted = cliHighlight(node.value, { language: lang, ignoreIllegals: true });
+    } else {
+      highlighted = chalk.greenBright(node.value);
+    }
+  } catch {
+    highlighted = chalk.greenBright(node.value);
+  }
+
+  const lines = highlighted.split('\n');
   return [
     topBorder,
-    ...lines.map((l) => chalk.cyan.dim('│ ') + chalk.greenBright(l)),
+    ...lines.map((l) => chalk.cyan.dim('│ ') + l),
+    bottomBorder,
+    '',
+  ];
+}
+
+function renderMermaidBlock(source: string, width: number): string[] {
+  const innerWidth = Math.max(10, width - 2);
+  const label = ' mermaid ';
+  const topFill = '─'.repeat(Math.max(0, innerWidth - label.length));
+  const topBorder = chalk.magenta.dim(`┌${topFill}${label}┐`);
+  const bottomBorder = chalk.magenta.dim(`└${'─'.repeat(innerWidth)}┘`);
+
+  let ascii: string;
+  try {
+    ascii = renderMermaidASCII(source);
+  } catch (err) {
+    // If parsing fails, fall back to showing the raw source
+    const lines = source.split('\n');
+    return [
+      topBorder,
+      chalk.yellow.dim('  ⚠ Could not render diagram'),
+      '',
+      ...lines.map((l) => chalk.magenta.dim('│ ') + chalk.dim(l)),
+      bottomBorder,
+      '',
+    ];
+  }
+
+  const diagramLines = ascii.split('\n');
+  return [
+    topBorder,
+    ...diagramLines.map((l) => chalk.magenta.dim('│ ') + chalk.cyanBright(l)),
     bottomBorder,
     '',
   ];
