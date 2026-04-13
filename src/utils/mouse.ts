@@ -1,8 +1,11 @@
 export type MouseEvent = {
-  type: 'scroll_up' | 'scroll_down' | 'press' | 'release';
+  type: 'scroll_up' | 'scroll_down' | 'press' | 'release' | 'move';
   button: number;
   x: number;
   y: number;
+  ctrl: boolean;
+  shift: boolean;
+  alt: boolean;
 };
 
 /**
@@ -38,13 +41,23 @@ export function parseSgrMouse(data: Buffer): MouseEvent | null {
   const y = parseInt(match[3]!, 10);
   const action = match[4]!;
 
+  // Modifier bits in button byte
+  const shift = !!(button & 4);
+  const alt   = !!(button & 8);
+  const ctrl  = !!(button & 16);
+  // Motion bit: bit 5 (32) means mouse-move event
+  const isMotion = !!(button & 32);
+
   if (action === 'm') {
-    return { type: 'release', button, x, y };
+    return { type: 'release', button, x, y, ctrl, shift, alt };
   }
 
-  // Scroll wheel: button 64 = up, 65 = down
-  if (button === 64) return { type: 'scroll_up', button, x, y };
-  if (button === 65) return { type: 'scroll_down', button, x, y };
+  // Scroll wheel: base button 64/65 (bit 6 set)
+  if ((button & ~(4 | 8 | 16)) === 64) return { type: 'scroll_up',   button, x, y, ctrl, shift, alt };
+  if ((button & ~(4 | 8 | 16)) === 65) return { type: 'scroll_down', button, x, y, ctrl, shift, alt };
 
-  return { type: 'press', button, x, y };
+  // Motion event (no button pressed: base button bits = 3)
+  if (isMotion) return { type: 'move', button, x, y, ctrl, shift, alt };
+
+  return { type: 'press', button, x, y, ctrl, shift, alt };
 }

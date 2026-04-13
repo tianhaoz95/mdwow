@@ -18,8 +18,8 @@ function KeyTest() {
   // Enable SGR mouse reporting
   useEffect(() => {
     if (!stdout) return;
-    stdout.write('\x1b[?1000h\x1b[?1002h\x1b[?1006h');
-    return () => stdout.write('\x1b[?1000l\x1b[?1002l\x1b[?1006l');
+    stdout.write('\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h');
+    return () => stdout.write('\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l');
   }, [stdout]);
 
   // Listen on internal_eventEmitter for raw chunks

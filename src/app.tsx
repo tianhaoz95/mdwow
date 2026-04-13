@@ -9,8 +9,9 @@ import { useFileWatcher } from './hooks/useFileWatcher.js';
 import { useMouseScroll } from './hooks/useMouseScroll.js';
 import { useToc } from './hooks/useToc.js';
 import { parseMarkdown } from './utils/parser.js';
-import { renderToLines, buildToc } from './utils/renderer.js';
+import { renderToLinesWithLinks, buildToc } from './utils/renderer.js';
 import { parseSgrMouse } from './utils/mouse.js';
+import type { LinkSpan } from './utils/renderer.js';
 
 type AppProps = {
   filePath: string;
@@ -24,7 +25,9 @@ export function App({ filePath }: AppProps) {
 
   const terminalWidth = stdout?.columns ?? 80;
   const terminalHeight = stdout?.rows ?? 24;
-  const visibleLines = Math.max(1, terminalHeight - 6);
+  // Header: 3 rows. Status bar: 3 rows normally, 4 when link tooltip is showing.
+  // We always reserve 4 for status to avoid layout jump on hover.
+  const visibleLines = Math.max(1, terminalHeight - 7);
 
   const { content, error, lastUpdated, isWatching } = useFileWatcher(filePath);
 
@@ -37,6 +40,7 @@ export function App({ filePath }: AppProps) {
   }, [content]);
 
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
   // TOC entries — recomputed when AST or width changes (width affects line counts)
   // We use terminalWidth here because buildToc needs to match renderToLines widths
@@ -60,9 +64,9 @@ export function App({ filePath }: AppProps) {
   const leftMargin = sidebarOpen ? 0 : Math.floor((terminalWidth - clampedWidth) / 2);
 
   // Render lines at the effective content width
-  const lines = useMemo(() => {
-    if (!ast) return [];
-    return renderToLines(ast, clampedWidth);
+  const { lines, links } = useMemo(() => {
+    if (!ast) return { lines: [] as string[], links: [] as LinkSpan[] };
+    return renderToLinesWithLinks(ast, clampedWidth);
   }, [ast, clampedWidth]);
 
   const totalLines = lines.length;
@@ -91,6 +95,30 @@ export function App({ filePath }: AppProps) {
       const mouse = parseSgrMouse(Buffer.from(input));
       if (mouse?.type === 'scroll_up')   setScrollOffset((prev) => clamp(prev - 3));
       if (mouse?.type === 'scroll_down') setScrollOffset((prev) => clamp(prev + 3));
+
+      // Resolve mouse position to a link span
+      const resolveLinkAtMouse = () => {
+        if (sidebarOpen) return null;
+        const lineIndex = scrollOffset + (mouse!.y - 4);
+        const col = mouse!.x - 1 - leftMargin;
+        return links.find(
+          (l) => l.lineIndex === lineIndex && col >= l.colStart && col < l.colEnd,
+        ) ?? null;
+      };
+
+      // Hover: show URL when over a link, but don't clear when moving away
+      if (mouse?.type === 'move') {
+        const hit = resolveLinkAtMouse();
+        if (hit) setHoveredLink(hit.url);
+        return;
+      }
+
+      // Click: if on a link, pin the URL in the status bar so the terminal
+      // can recognise it (e.g. iTerm2 Cmd+click). Click anywhere else clears it.
+      if (mouse?.type === 'press' && !sidebarOpen) {
+        const hit = resolveLinkAtMouse();
+        setHoveredLink(hit?.url ?? null);
+      }
 
       // Click in sidebar
       if (mouse?.type === 'press' && sidebarOpen && mouse.x <= SIDEBAR_WIDTH) {
@@ -207,6 +235,7 @@ export function App({ filePath }: AppProps) {
         visibleLines={visibleLines}
         readingWidth={readingWidth !== null ? clampedWidth : null}
         tocOpen={sidebarOpen}
+        hoveredLink={hoveredLink}
       />
     </Box>
   );

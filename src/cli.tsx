@@ -46,7 +46,7 @@ if (!existsSync(resolved)) {
 
 // Always restore mouse reporting before the process dies, regardless of how
 // exit is triggered (q key, Ctrl+C, SIGTERM, uncaught error, etc.)
-const MOUSE_OFF = '\x1b[?1000l\x1b[?1002l\x1b[?1006l';
+const MOUSE_OFF = '\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l';
 process.on('exit', () => {
   process.stdout.write(MOUSE_OFF);
 });

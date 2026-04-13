@@ -13,6 +13,7 @@ import { renderMermaidASCII } from 'beautiful-mermaid';
 import type {
   Root,
   Content,
+  BlockContent,
   PhrasingContent,
   Heading,
   Paragraph,
@@ -76,6 +77,44 @@ function renderInlines(nodes: PhrasingContent[]): string {
   return nodes.map(renderInline).join('');
 }
 
+// ── Link span tracking ────────────────────────────────────────────────────────
+
+export type LinkSpan = {
+  lineIndex: number;
+  colStart: number; // visible column, 0-indexed
+  colEnd: number;   // exclusive
+  url: string;
+};
+
+type InlineSpan = { colStart: number; colEnd: number; url: string };
+
+/** Like renderInlines but also returns the column ranges of every link. */
+function renderInlinesTracked(
+  nodes: PhrasingContent[],
+): { text: string; spans: InlineSpan[] } {
+  const spans: InlineSpan[] = [];
+  let col = 0;
+  const parts: string[] = [];
+
+  for (const node of nodes) {
+    if (node.type === 'link') {
+      const n = node as Link;
+      const label = n.children.length > 0 ? n.children.map(renderInline).join('') : n.url;
+      const rendered = chalk.blueBright.underline(stripAnsi(label));
+      const visLen = visibleLength(rendered);
+      spans.push({ colStart: col, colEnd: col + visLen, url: n.url });
+      parts.push(rendered);
+      col += visLen;
+    } else {
+      const rendered = renderInline(node);
+      col += visibleLength(rendered);
+      parts.push(rendered);
+    }
+  }
+
+  return { text: parts.join(''), spans };
+}
+
 // ── word-wrap ─────────────────────────────────────────────────────────────────
 
 function stripAnsi(s: string): string {
@@ -113,37 +152,23 @@ function wrapLine(line: string, width: number): string[] {
 
 // ── block rendering ───────────────────────────────────────────────────────────
 
-function renderHeading(node: Heading, width: number): string[] {
-  const text = renderInlines(node.children as PhrasingContent[]);
-  const { depth } = node;
-
+function renderHeadingFromText(depth: number, text: string, width: number): string[] {
   if (depth === 1) {
     const bar = chalk.magentaBright('═'.repeat(width));
     return ['', bar, chalk.bold.magentaBright('  ' + text), bar, ''];
   }
-
   if (depth === 2) {
-    return [
-      '',
-      chalk.bold.cyanBright(text),
-      chalk.cyanBright.dim('─'.repeat(width)),
-    ];
+    return ['', chalk.bold.cyanBright(text), chalk.cyanBright.dim('─'.repeat(width))];
   }
-
-  if (depth === 3) {
-    return ['', chalk.bold.yellowBright('▸ ' + text)];
-  }
-
-  if (depth === 4) {
-    return ['', chalk.bold.greenBright(text)];
-  }
-
-  if (depth === 5) {
-    return ['', chalk.blueBright(text)];
-  }
-
-  // H6
+  if (depth === 3) return ['', chalk.bold.yellowBright('▸ ' + text)];
+  if (depth === 4) return ['', chalk.bold.greenBright(text)];
+  if (depth === 5) return ['', chalk.blueBright(text)];
   return ['', chalk.white.dim(text)];
+}
+
+function renderHeading(node: Heading, width: number): string[] {
+  const text = renderInlines(node.children as PhrasingContent[]);
+  return renderHeadingFromText(node.depth, text, width);
 }
 
 function renderParagraph(node: Paragraph, width: number): string[] {
@@ -325,44 +350,163 @@ function renderHr(width: number): string[] {
   return [chalk.cyan.dim('─'.repeat(Math.max(1, width))), ''];
 }
 
+// ── Link collection helpers for nested blocks ─────────────────────────────────
+
+function collectBlockquoteLinks(
+  node: Blockquote,
+  baseLineIndex: number,
+  width: number,
+  out: LinkSpan[],
+  indent = 0,
+): void {
+  // Each paragraph in a blockquote renders as: '│ ' + text (prefix = 2 visible chars)
+  const prefix = 2 + indent;
+  let lineOffset = 0;
+  for (const child of node.children) {
+    if (child.type === 'paragraph') {
+      const { text, spans } = renderInlinesTracked((child as Paragraph).children as PhrasingContent[]);
+      const wrapped = wrapLine(text, width - prefix);
+      for (const span of spans) {
+        out.push({
+          lineIndex: baseLineIndex + lineOffset,
+          colStart: prefix + span.colStart,
+          colEnd: prefix + span.colEnd,
+          url: span.url,
+        });
+      }
+      lineOffset += wrapped.length;
+    } else if (child.type === 'blockquote') {
+      const innerLines = renderBlockquote(child as Blockquote, width - prefix).length;
+      collectBlockquoteLinks(child as Blockquote, baseLineIndex + lineOffset, width - prefix, out, indent + 2);
+      lineOffset += innerLines;
+    } else {
+      lineOffset += renderBlockquote({ type: 'blockquote', children: [child as BlockContent] }, width).length;
+    }
+  }
+}
+
+function collectListLinks(
+  node: List,
+  baseLineIndex: number,
+  width: number,
+  out: LinkSpan[],
+  depth = 0,
+): void {
+  const ordered = node.ordered ?? false;
+  const indent = '  '.repeat(depth);
+  let lineOffset = 0;
+
+  for (let i = 0; i < node.children.length; i++) {
+    const item = node.children[i] as ListItem;
+    const bullet = ordered ? `${i + 1}.` : '•';
+    const prefixLen = visibleLength(`${indent}${bullet} `);
+
+    for (const child of item.children) {
+      if (child.type === 'paragraph') {
+        const { text, spans } = renderInlinesTracked((child as Paragraph).children as PhrasingContent[]);
+        const wrapped = wrapLine(text, width - prefixLen);
+        for (const span of spans) {
+          out.push({
+            lineIndex: baseLineIndex + lineOffset,
+            colStart: prefixLen + span.colStart,
+            colEnd: prefixLen + span.colEnd,
+            url: span.url,
+          });
+        }
+        lineOffset += wrapped.length;
+      } else if (child.type === 'list') {
+        const innerLines = renderListItems(child as List, width, depth + 1).length;
+        collectListLinks(child as List, baseLineIndex + lineOffset, width, out, depth + 1);
+        lineOffset += innerLines;
+      }
+    }
+  }
+}
+
 // ── top-level ─────────────────────────────────────────────────────────────────
 
 export function renderToLines(ast: Root, width = 80): string[] {
-  const out: string[] = [];
-  const contentWidth = width - 4; // account for 2-char padding on each side
+  return renderToLinesWithLinks(ast, width).lines;
+}
+
+export function renderToLinesWithLinks(
+  ast: Root,
+  width = 80,
+): { lines: string[]; links: LinkSpan[] } {
+  const lines: string[] = [];
+  const links: LinkSpan[] = [];
+  const contentWidth = width - 4;
+
+  function pushLines(newLines: string[], newLinks?: InlineSpan[]) {
+    if (newLinks) {
+      const baseLineIndex = lines.length;
+      for (const span of newLinks) {
+        links.push({ ...span, lineIndex: baseLineIndex });
+      }
+    }
+    lines.push(...newLines);
+  }
 
   for (const node of ast.children as Content[]) {
     switch (node.type) {
-      case 'heading':
-        out.push(...renderHeading(node as Heading, contentWidth));
+      case 'heading': {
+        const h = node as Heading;
+        // Headings can contain links — track them on the text line
+        const children = h.children as PhrasingContent[];
+        const { text, spans } = renderInlinesTracked(children);
+        const headingLines = renderHeadingFromText(h.depth, text, contentWidth);
+        // text line offset: H1 → 2, others → 1
+        const textLineOffset = h.depth === 1 ? 2 : 1;
+        const baseLineIndex = lines.length + textLineOffset;
+        for (const span of spans) {
+          links.push({ ...span, lineIndex: baseLineIndex });
+        }
+        lines.push(...headingLines);
         break;
-      case 'paragraph':
-        out.push(...renderParagraph(node as Paragraph, contentWidth));
+      }
+      case 'paragraph': {
+        const para = node as Paragraph;
+        const { text, spans } = renderInlinesTracked(para.children as PhrasingContent[]);
+        const paraLines = wrapLine(text, contentWidth);
+        // Track links — they land on the first wrapped line (simple: track at base line)
+        // For multi-line wraps the link may span lines; we track the first occurrence
+        const baseLineIndex = lines.length;
+        for (const span of spans) {
+          links.push({ ...span, lineIndex: baseLineIndex });
+        }
+        lines.push(...paraLines, '');
         break;
+      }
       case 'code':
-        out.push(...renderCode(node as Code, contentWidth));
+        pushLines(renderCode(node as Code, contentWidth));
         break;
-      case 'blockquote':
-        out.push(...renderBlockquote(node as Blockquote, contentWidth));
+      case 'blockquote': {
+        const bqLines = renderBlockquote(node as Blockquote, contentWidth);
+        collectBlockquoteLinks(node as Blockquote, lines.length, contentWidth, links);
+        lines.push(...bqLines);
         break;
-      case 'list':
-        out.push(...renderListItems(node as List, contentWidth));
+      }
+      case 'list': {
+        const listLines = renderListItems(node as List, contentWidth);
+        collectListLinks(node as List, lines.length, contentWidth, links);
+        lines.push(...listLines);
         break;
+      }
       case 'table':
-        out.push(...renderTable(node as Table, contentWidth));
+        pushLines(renderTable(node as Table, contentWidth));
         break;
       case 'thematicBreak':
-        out.push(...renderHr(contentWidth));
+        pushLines(renderHr(contentWidth));
         break;
       case 'html':
-        out.push(chalk.dim((node as { value: string }).value), '');
+        lines.push(chalk.dim((node as { value: string }).value), '');
         break;
       default:
         break;
     }
   }
 
-  return out;
+  return { lines, links };
 }
 
 // ── Table of contents ─────────────────────────────────────────────────────────
