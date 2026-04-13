@@ -27,8 +27,8 @@ function truncate(text: string, maxLen: number): string {
 export function Sidebar({ entries, cursorIndex, activeIndex, height }: SidebarProps) {
   const innerWidth = SIDEBAR_WIDTH - 2; // subtract border chars
 
-  // Scroll the sidebar view to keep cursor visible
-  const visibleRows = height - 2; // subtract top/bottom border
+  // Inner content rows = height - 2 (border) - 4 (title + sep + footer-sep + hint)
+  const visibleRows = Math.max(1, height - 6);
   const scrollStart = Math.max(
     0,
     Math.min(cursorIndex - Math.floor(visibleRows / 2), entries.length - visibleRows),

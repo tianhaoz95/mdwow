@@ -92,11 +92,27 @@ export function App({ filePath }: AppProps) {
       if (mouse?.type === 'scroll_up')   setScrollOffset((prev) => clamp(prev - 3));
       if (mouse?.type === 'scroll_down') setScrollOffset((prev) => clamp(prev + 3));
 
-      // Click in sidebar: detect by x position (sidebar occupies columns 0..SIDEBAR_WIDTH-1)
+      // Click in sidebar
       if (mouse?.type === 'press' && sidebarOpen && mouse.x <= SIDEBAR_WIDTH) {
-        // y=1 is terminal row 1; sidebar content starts after border+title+separator = row 3
-        const clickedEntryIndex = Math.max(0, toc.cursorIndex - Math.floor((visibleLines) / 2))
-          + (mouse.y - 4); // 4 = border(1) + title(1) + separator(1) + 1-indexed
+        // Terminal row layout (1-indexed):
+        //   rows 1-3  : header (border-top + content + border-bottom)
+        //   row  4    : sidebar border-top
+        //   row  5    : "Contents" title
+        //   row  6    : ─ separator
+        //   row  7+   : entry rows
+        // So: entryRow (0-indexed within visible entries) = mouse.y - 7
+        //
+        // Must mirror Sidebar.tsx: visibleRows = height - 6
+        const sidebarVisibleRows = Math.max(1, visibleLines - 6);
+        const scrollStart = Math.max(
+          0,
+          Math.min(
+            toc.cursorIndex - Math.floor(sidebarVisibleRows / 2),
+            tocEntries.length - sidebarVisibleRows,
+          ),
+        );
+        const entryRow = mouse.y - 7;
+        const clickedEntryIndex = scrollStart + entryRow;
         if (clickedEntryIndex >= 0 && clickedEntryIndex < tocEntries.length) {
           toc.setCursor(clickedEntryIndex);
           const entry = tocEntries[clickedEntryIndex];
