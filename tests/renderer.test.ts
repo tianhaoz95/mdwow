@@ -18,13 +18,11 @@ function joined(md: string, width = 80): string {
 
 describe('renderToLines — headings', () => {
   it('H1 produces ═ decorator bars', () => {
-    const ls = lines('# Title');
-    expect(ls.some((l) => l.includes('═'))).toBe(true);
+    expect(lines('# Title').some((l) => l.includes('═'))).toBe(true);
   });
 
   it('H1 has two ═ bars (top and bottom)', () => {
-    const ls = lines('# Title');
-    expect(ls.filter((l) => l.match(/^═+$/))).toHaveLength(2);
+    expect(lines('# Title').filter((l) => l.match(/^═+$/))).toHaveLength(2);
   });
 
   it('H1 text appears between the bars', () => {
@@ -36,35 +34,51 @@ describe('renderToLines — headings', () => {
   });
 
   it('H1 text is indented with two spaces', () => {
-    const ls = lines('# Title');
-    const textLine = ls.find((l) => l.includes('Title'))!;
+    const textLine = lines('# Title').find((l) => l.includes('Title'))!;
     expect(textLine).toMatch(/^  /);
   });
 
-  it('H2 produces ── prefix and suffix', () => {
-    expect(joined('## Section')).toContain('── Section ──');
+  it('H1 does not contain # prefix', () => {
+    expect(joined('# Title')).not.toContain('#');
   });
 
-  it('H2 produces ─ underline on next line', () => {
+  it('H2 renders text with ─ underline', () => {
     const ls = lines('## Section');
-    const underline = ls.find((l) => l.match(/^─+$/));
-    expect(underline).toBeDefined();
+    expect(ls.some((l) => l.includes('Section'))).toBe(true);
+    expect(ls.some((l) => l.match(/^─+$/))).toBe(true);
   });
 
-  it('H3 produces ▸ prefix', () => {
+  it('H2 does not contain ## prefix', () => {
+    expect(joined('## Section')).not.toContain('##');
+  });
+
+  it('H3 renders text with ▸ prefix', () => {
     expect(joined('### Sub')).toContain('▸ Sub');
   });
 
-  it('H4 produces #### prefix', () => {
-    expect(joined('#### Detail')).toContain('#### Detail');
+  it('H3 does not contain ### prefix', () => {
+    expect(joined('### Sub')).not.toContain('###');
   });
 
-  it('H5 produces ##### prefix', () => {
-    expect(joined('##### Minor')).toContain('##### Minor');
+  it('H4 renders text without prefix', () => {
+    expect(joined('#### Detail')).toContain('Detail');
+    expect(joined('#### Detail')).not.toContain('####');
   });
 
-  it('H6 produces ###### prefix', () => {
-    expect(joined('###### Tiny')).toContain('###### Tiny');
+  it('H5 renders text without prefix', () => {
+    expect(joined('##### Minor')).toContain('Minor');
+    expect(joined('##### Minor')).not.toContain('#####');
+  });
+
+  it('H6 renders text without prefix', () => {
+    expect(joined('###### Tiny')).toContain('Tiny');
+    expect(joined('###### Tiny')).not.toContain('######');
+  });
+
+  it('all heading levels produce non-empty output', () => {
+    for (const depth of [1, 2, 3, 4, 5, 6]) {
+      expect(lines('#'.repeat(depth) + ' Heading').some((l) => l.trim().length > 0)).toBe(true);
+    }
   });
 });
 

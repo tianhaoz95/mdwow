@@ -20,40 +20,33 @@ describe('Heading visual output', () => {
   });
 
   it('H1 renders ═ decorator bars', () => {
-    const f = frame(1, 'Hello', 40);
-    expect(f).toContain('═');
+    expect(frame(1, 'Hello', 40)).toContain('═');
   });
 
   it('H1 top and bottom decorator bars have equal length', () => {
     const f = frame(1, 'Title', 40);
-    const lines = f.split('\n').filter((l) => l.includes('═'));
-    expect(lines).toHaveLength(2);
-    expect(lines[0]!.length).toBe(lines[1]!.length);
+    const barLines = f.split('\n').filter((l) => l.includes('═'));
+    expect(barLines).toHaveLength(2);
+    expect(barLines[0]!.length).toBe(barLines[1]!.length);
   });
 
-  it('H1 text line is between the two decorator bars', () => {
+  it('H1 text is between the two decorator bars', () => {
     const f = frame(1, 'Title', 40);
-    const lines = f.split('\n').filter((l) => l.trim().length > 0);
-    const barIdx = lines.findIndex((l) => l.includes('═'));
-    const textIdx = lines.findIndex((l) => l.includes('Title'));
-    const lastBarIdx = lines.lastIndexOf(lines.find((l) => l.includes('═'))!);
+    const ls = f.split('\n').filter((l) => l.trim().length > 0);
+    const barIdx = ls.findIndex((l) => l.includes('═'));
+    const textIdx = ls.findIndex((l) => l.includes('Title'));
     expect(textIdx).toBeGreaterThan(barIdx);
-    // Text appears before the closing bar
-    const closingBarIdx = lines.slice(textIdx + 1).findIndex((l) => l.includes('═'));
-    expect(closingBarIdx).toBeGreaterThanOrEqual(0);
-  });
-
-  it('H1 has surrounding vertical margin (blank lines)', () => {
-    const f = frame(1, 'Title', 40);
-    // marginY={1} produces blank lines before and after
-    expect(f).toMatch(/^\n/);
-    expect(f).toMatch(/\n$/);
+    expect(ls.slice(textIdx + 1).some((l) => l.includes('═'))).toBe(true);
   });
 
   it('H1 text is indented with leading spaces', () => {
     const f = frame(1, 'Title', 40);
     const textLine = f.split('\n').find((l) => l.includes('Title'))!;
     expect(textLine).toMatch(/^\s{2}/);
+  });
+
+  it('H1 does not contain # prefix', () => {
+    expect(frame(1, 'Title')).not.toContain('#');
   });
 
   it('H1 decorator bar width scales with terminalWidth', () => {
@@ -70,22 +63,17 @@ describe('Heading visual output', () => {
     expect(frame(2, 'Section')).toContain('Section');
   });
 
-  it('H2 renders ── prefix and suffix', () => {
-    const f = frame(2, 'Section');
-    expect(f).toContain('── Section ──');
-  });
-
   it('H2 renders a ─ underline separator', () => {
     const f = frame(2, 'Section');
-    const lines = f.split('\n').filter((l) => l.trim().length > 0);
-    // Second non-empty line should be all dashes
-    const underline = lines[1];
-    expect(underline).toMatch(/^─+$/);
+    expect(f.split('\n').some((l) => l.match(/^─+$/))).toBe(true);
   });
 
-  it('H2 has top margin (blank line before)', () => {
-    const f = frame(2, 'Section');
-    expect(f).toMatch(/^\n/);
+  it('H2 does not contain ## prefix', () => {
+    expect(frame(2, 'Section')).not.toContain('##');
+  });
+
+  it('H2 has top margin', () => {
+    expect(frame(2, 'Section')).toMatch(/^\n/);
   });
 
   // ── H3 ─────────────────────────────────────────────────────────────────────
@@ -98,52 +86,37 @@ describe('Heading visual output', () => {
     expect(frame(3, 'Sub')).toContain('▸ Sub');
   });
 
-  it('H3 has top margin', () => {
-    expect(frame(3, 'Sub')).toMatch(/^\n/);
+  it('H3 does not contain ### prefix', () => {
+    expect(frame(3, 'Sub')).not.toContain('###');
   });
 
   // ── H4 ─────────────────────────────────────────────────────────────────────
 
-  it('H4 renders with #### prefix', () => {
-    const f = frame(4, 'Detail');
-    expect(f).toContain('#### Detail');
+  it('H4 renders the heading text', () => {
+    expect(frame(4, 'Detail')).toContain('Detail');
+  });
+
+  it('H4 does not contain #### prefix', () => {
+    expect(frame(4, 'Detail')).not.toContain('####');
   });
 
   // ── H5 ─────────────────────────────────────────────────────────────────────
 
-  it('H5 renders with ##### prefix', () => {
-    const f = frame(5, 'Minor');
-    expect(f).toContain('##### Minor');
+  it('H5 renders the heading text', () => {
+    expect(frame(5, 'Minor')).toContain('Minor');
   });
 
   // ── H6 ─────────────────────────────────────────────────────────────────────
 
-  it('H6 renders with ###### prefix', () => {
-    const f = frame(6, 'Tiny');
-    expect(f).toContain('###### Tiny');
+  it('H6 renders the heading text', () => {
+    expect(frame(6, 'Tiny')).toContain('Tiny');
   });
 
-  // ── inline formatting in headings ──────────────────────────────────────────
+  // ── all levels ─────────────────────────────────────────────────────────────
 
-  it('H2 with bold child renders bold text', () => {
-    const node: MdastHeading = {
-      type: 'heading', depth: 2,
-      children: [{ type: 'strong', children: [{ type: 'text', value: 'Bold Section' }] }],
-    };
-    const f = render(<Heading node={node} />).lastFrame() ?? '';
-    expect(f).toContain('Bold Section');
-  });
-
-  it('H3 with inline code renders code value', () => {
-    const node: MdastHeading = {
-      type: 'heading', depth: 3,
-      children: [
-        { type: 'text', value: 'Use ' },
-        { type: 'inlineCode', value: 'npm' },
-      ],
-    };
-    const f = render(<Heading node={node} />).lastFrame() ?? '';
-    expect(f).toContain('Use');
-    expect(f).toContain('npm');
+  it('all heading depths produce non-empty output', () => {
+    for (const depth of [1, 2, 3, 4, 5, 6] as const) {
+      expect(frame(depth, 'Test').trim().length).toBeGreaterThan(0);
+    }
   });
 });

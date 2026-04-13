@@ -21,32 +21,39 @@ describe('MarkdownRenderer — headings', () => {
   it('H1 renders text between bars', () => {
     const f = frame('# My Heading');
     expect(f).toContain('My Heading');
-    const lines = f.split('\n').filter((l) => l.trim().length > 0);
-    const barIdx = lines.findIndex((l) => l.includes('═'));
-    const textIdx = lines.findIndex((l) => l.includes('My Heading'));
+    const ls = f.split('\n').filter((l) => l.trim().length > 0);
+    const barIdx = ls.findIndex((l) => l.includes('═'));
+    const textIdx = ls.findIndex((l) => l.includes('My Heading'));
     expect(textIdx).toBeGreaterThan(barIdx);
   });
 
-  it('H2 renders ── prefix and ─ underline', () => {
+  it('H2 renders text with ─ underline', () => {
     const f = frame('## Section');
-    expect(f).toContain('── Section ──');
-    expect(f).toMatch(/─{10,}/); // underline
+    expect(f).toContain('Section');
+    expect(f).toMatch(/─{10,}/);
   });
 
-  it('H3 renders ▸ prefix', () => {
+  it('H3 renders text with ▸ prefix', () => {
     expect(frame('### Sub')).toContain('▸ Sub');
   });
 
-  it('H4 renders #### prefix', () => {
-    expect(frame('#### Detail')).toContain('#### Detail');
+  it('H4 renders text without prefix', () => {
+    expect(frame('#### Detail')).toContain('Detail');
+    expect(frame('#### Detail')).not.toContain('####');
   });
 
-  it('H5 renders ##### prefix', () => {
-    expect(frame('##### Minor')).toContain('##### Minor');
+  it('H5 renders text without prefix', () => {
+    expect(frame('##### Minor')).toContain('Minor');
   });
 
-  it('H6 renders ###### prefix', () => {
-    expect(frame('###### Tiny')).toContain('###### Tiny');
+  it('H6 renders text without prefix', () => {
+    expect(frame('###### Tiny')).toContain('Tiny');
+  });
+
+  it('no heading level uses # prefix markers', () => {
+    for (const depth of [1, 2, 3, 4, 5, 6]) {
+      expect(frame('#'.repeat(depth) + ' Test')).not.toContain('#'.repeat(depth));
+    }
   });
 });
 
@@ -265,8 +272,9 @@ console.log("hello");
     expect(frame(fullDoc)).toContain('═');
   });
 
-  it('renders H2 with ── prefix', () => {
-    expect(frame(fullDoc)).toContain('── Section One ──');
+  it('renders H2 text with underline', () => {
+    expect(frame(fullDoc)).toContain('Section One');
+    expect(frame(fullDoc)).toMatch(/─{10,}/);
   });
 
   it('renders H3 with ▸ prefix', () => {

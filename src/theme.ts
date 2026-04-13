@@ -11,7 +11,7 @@ export const theme = {
   h1: { color: 'magentaBright', bold: true } satisfies TextStyle,
   h2: { color: 'cyanBright', bold: true } satisfies TextStyle,
   h3: { color: 'yellowBright', bold: true } satisfies TextStyle,
-  h4: { color: 'blueBright', bold: true } satisfies TextStyle,
+  h4: { color: 'greenBright', bold: true } satisfies TextStyle,
   h5: { color: 'blueBright' } satisfies TextStyle,
   h6: { color: 'blue' } satisfies TextStyle,
 

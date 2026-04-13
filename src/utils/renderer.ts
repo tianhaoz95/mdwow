@@ -115,38 +115,35 @@ function wrapLine(line: string, width: number): string[] {
 
 function renderHeading(node: Heading, width: number): string[] {
   const text = renderInlines(node.children as PhrasingContent[]);
-  const plainText = stripAnsi(text);
   const { depth } = node;
 
   if (depth === 1) {
     const bar = chalk.magentaBright('═'.repeat(width));
-    return [
-      '',
-      bar,
-      chalk.bold.magentaBright('  ' + text),
-      bar,
-      '',
-    ];
+    return ['', bar, chalk.bold.magentaBright('  ' + text), bar, ''];
   }
+
   if (depth === 2) {
-    const underline = chalk.cyanBright.dim('─'.repeat(width));
-    const label = `── ${text} ──`;
     return [
       '',
-      chalk.bold.cyanBright(label),
-      underline,
+      chalk.bold.cyanBright(text),
+      chalk.cyanBright.dim('─'.repeat(width)),
     ];
   }
+
   if (depth === 3) {
-    return ['', chalk.bold.yellowBright(`▸ ${text}`)];
+    return ['', chalk.bold.yellowBright('▸ ' + text)];
   }
+
   if (depth === 4) {
-    return ['', chalk.bold.blueBright(`#### ${plainText}`)];
+    return ['', chalk.bold.greenBright(text)];
   }
+
   if (depth === 5) {
-    return ['', chalk.blueBright(`##### ${plainText}`)];
+    return ['', chalk.blueBright(text)];
   }
-  return ['', chalk.blue(`###### ${plainText}`)];
+
+  // H6
+  return ['', chalk.white.dim(text)];
 }
 
 function renderParagraph(node: Paragraph, width: number): string[] {

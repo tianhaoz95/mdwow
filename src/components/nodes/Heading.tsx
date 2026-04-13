@@ -31,11 +31,7 @@ export function Heading({ node, terminalWidth = 80 }: HeadingProps) {
   if (depth === 2) {
     return (
       <Box flexDirection="column" marginTop={1}>
-        <Box flexDirection="row">
-          <Text {...theme.h2}>{'── '}</Text>
-          <InlineContent children={children} style={theme.h2} />
-          <Text {...theme.h2}>{' ──'}</Text>
-        </Box>
+        <InlineContent children={children} style={theme.h2} />
         <Text {...theme.h2} dimColor>{'─'.repeat(40)}</Text>
       </Box>
     );
@@ -50,13 +46,25 @@ export function Heading({ node, terminalWidth = 80 }: HeadingProps) {
     );
   }
 
-  // H4–H6
-  const headingStyle = depth === 4 ? theme.h4 : depth === 5 ? theme.h5 : theme.h6;
-  const prefix = '#'.repeat(depth) + ' ';
+  if (depth === 4) {
+    return (
+      <Box marginTop={1}>
+        <InlineContent children={children} style={theme.h4} />
+      </Box>
+    );
+  }
+
+  if (depth === 5) {
+    return (
+      <Box marginTop={1}>
+        <InlineContent children={children} style={theme.h5} />
+      </Box>
+    );
+  }
+
   return (
-    <Box flexDirection="row" marginTop={1}>
-      <Text {...headingStyle}>{prefix}</Text>
-      <InlineContent children={children} style={headingStyle} />
+    <Box marginTop={1}>
+      <InlineContent children={children} style={theme.h6} />
     </Box>
   );
 }
