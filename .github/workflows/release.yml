@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: write
-  id-token: write  # Required for npm provenance signing via OIDC
+  id-token: write  # Required for OIDC provenance
 
 jobs:
   release:
@@ -35,12 +35,13 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
+      # Use setup-node WITHOUT registry-url for install/test/build
+      # so NODE_AUTH_TOKEN is not injected into these steps
       - name: Set up Node.js
         if: steps.version.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         if: steps.version.outputs.changed == 'true'
@@ -54,11 +55,22 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: npm run build
 
-      - name: Publish to npm
+      # Re-run setup-node WITH registry-url only for publish.
+      # This writes .npmrc pointing to the registry. With id-token: write
+      # and no NODE_AUTH_TOKEN, npm uses the GitHub OIDC token via
+      # Trusted Publishers instead of a classic token.
+      - name: Set up Node.js for publish
+        if: steps.version.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to npm via OIDC
         if: steps.version.outputs.changed == 'true'
         run: npm publish --provenance --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ''  # explicitly empty so npm uses OIDC, not the token
 
       - name: Create git tag and GitHub release
         if: steps.version.outputs.changed == 'true'
