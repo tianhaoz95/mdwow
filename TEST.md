@@ -2,6 +2,8 @@
 
 A comprehensive test file covering all supported Markdown elements.
 
+👉 Click [README.md](./README.md) to open it as a floating preview.
+
 ---
 
 ## Text Formatting

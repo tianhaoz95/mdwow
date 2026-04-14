@@ -88,6 +88,73 @@ export type LinkSpan = {
 
 type InlineSpan = { colStart: number; colEnd: number; url: string };
 
+/**
+ * After wrapLine() splits a text into multiple lines, re-map inline spans
+ * (which have column positions in the original unwrapped text) to the correct
+ * (lineOffset, colStart, colEnd) in the wrapped output.
+ *
+ * Returns only spans that are fully visible on a single wrapped line.
+ */
+function remapSpansAfterWrap(
+  text: string,
+  spans: InlineSpan[],
+  width: number,
+  baseLine: number,
+): LinkSpan[] {
+  if (spans.length === 0) return [];
+
+  // Simulate wrapLine to build a map: unwrappedCol → (wrappedLineIndex, wrappedCol)
+  const words = text.split(' ');
+  const lineMap: Array<{ lineIdx: number; startCol: number }> = []; // per-char mapping
+  let currentLine = 0;
+  let currentCol = 0;
+  let charPos = 0;
+
+  for (let wi = 0; wi < words.length; wi++) {
+    const word = words[wi]!;
+    const wordLen = visibleLength(word);
+    const test = currentCol === 0 ? word : ' '.repeat(1) + word;
+    const testLen = currentCol === 0 ? wordLen : 1 + wordLen;
+
+    if (currentCol > 0 && currentCol + testLen > width) {
+      // wrap: record the space as end of previous line, start new line
+      lineMap[charPos] = { lineIdx: currentLine, startCol: currentCol };
+      charPos++;
+      currentLine++;
+      currentCol = 0;
+    } else if (currentCol > 0) {
+      // space before word
+      lineMap[charPos] = { lineIdx: currentLine, startCol: currentCol };
+      charPos++;
+      currentCol++;
+    }
+
+    // record each char of the word
+    for (let ci = 0; ci < wordLen; ci++) {
+      lineMap[charPos] = { lineIdx: currentLine, startCol: currentCol };
+      charPos++;
+      currentCol++;
+    }
+  }
+
+  const result: LinkSpan[] = [];
+  for (const span of spans) {
+    const startInfo = lineMap[span.colStart];
+    const endInfo   = lineMap[Math.max(span.colStart, span.colEnd - 1)];
+    if (!startInfo || !endInfo) continue;
+    // Only track spans that fit on a single wrapped line
+    if (startInfo.lineIdx !== endInfo.lineIdx) continue;
+    const labelLen = span.colEnd - span.colStart;
+    result.push({
+      lineIndex: baseLine + startInfo.lineIdx,
+      colStart:  startInfo.startCol,
+      colEnd:    startInfo.startCol + labelLen,
+      url: span.url,
+    });
+  }
+  return result;
+}
+
 /** Like renderInlines but also returns the column ranges of every link. */
 function renderInlinesTracked(
   nodes: PhrasingContent[],
@@ -467,14 +534,29 @@ export function renderToLinesWithLinks(
       case 'paragraph': {
         const para = node as Paragraph;
         const { text, spans } = renderInlinesTracked(para.children as PhrasingContent[]);
-        const paraLines = wrapLine(text, contentWidth);
-        // Track links — they land on the first wrapped line (simple: track at base line)
-        // For multi-line wraps the link may span lines; we track the first occurrence
+        // Split on hard line breaks (\n from <break> nodes) and handle each segment
+        const segments = text.split('\n');
+        const plainSegments = stripAnsi(text).split('\n');
         const baseLineIndex = lines.length;
-        for (const span of spans) {
-          links.push({ ...span, lineIndex: baseLineIndex });
+        let segLineOffset = 0;
+        let segColOffset = 0; // cumulative col offset in the original span coords
+        for (let si = 0; si < segments.length; si++) {
+          const seg = segments[si]!;
+          const plainSeg = plainSegments[si]!;
+          const segLines = wrapLine(seg, contentWidth);
+          // Adjust spans: only include spans whose colStart falls within this segment
+          const segStart = segColOffset;
+          const segEnd = segColOffset + visibleLength(seg);
+          const segSpans = spans
+            .filter(s => s.colStart >= segStart && s.colEnd <= segEnd + 1)
+            .map(s => ({ ...s, colStart: s.colStart - segStart, colEnd: s.colEnd - segStart }));
+          const remapped = remapSpansAfterWrap(plainSeg, segSpans, contentWidth, baseLineIndex + segLineOffset);
+          links.push(...remapped);
+          lines.push(...segLines);
+          segLineOffset += segLines.length;
+          segColOffset = segEnd + 1; // +1 for the \n
         }
-        lines.push(...paraLines, '');
+        lines.push(''); // blank line after paragraph
         break;
       }
       case 'code':

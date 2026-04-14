@@ -1,17 +1,29 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
-import { basename } from 'path';
+import { basename, resolve, dirname, extname, isAbsolute } from 'path';
+import { existsSync } from 'fs';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
 import { Sidebar, SIDEBAR_WIDTH } from './components/Sidebar.js';
+import { FloatingPreview } from './components/FloatingPreview.js';
 import { ErrorView } from './components/ErrorView.js';
 import { useFileWatcher } from './hooks/useFileWatcher.js';
 import { useMouseScroll } from './hooks/useMouseScroll.js';
 import { useToc } from './hooks/useToc.js';
+import { useFloatingPreview } from './hooks/useFloatingPreview.js';
 import { parseMarkdown } from './utils/parser.js';
 import { renderToLinesWithLinks, buildToc } from './utils/renderer.js';
 import { parseSgrMouse } from './utils/mouse.js';
 import type { LinkSpan } from './utils/renderer.js';
+
+/** Resolve a link URL to an absolute path if it points to a local .md file. */
+function resolveMarkdownLink(url: string, fromFile: string): string | null {
+  // Skip http/https/mailto and other non-file URLs
+  if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(url)) return null;
+  if (extname(url).toLowerCase() !== '.md') return null;
+  const abs = isAbsolute(url) ? url : resolve(dirname(fromFile), url);
+  return existsSync(abs) ? abs : null;
+}
 
 type AppProps = {
   filePath: string;
@@ -41,6 +53,7 @@ export function App({ filePath }: AppProps) {
 
   const [scrollOffset, setScrollOffset] = useState(0);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const preview = useFloatingPreview();
 
   // TOC entries — recomputed when AST or width changes (width affects line counts)
   // We use terminalWidth here because buildToc needs to match renderToLines widths
@@ -84,11 +97,33 @@ export function App({ filePath }: AppProps) {
 
   useMouseScroll();
 
+  // Floating preview visible lines for its own scroll calculations
+  const previewContentRows = Math.max(1, Math.floor(terminalHeight * 0.75) - 7);
+
   useInput((input, key) => {
-    if (input === 'q' || (key.ctrl && input === 'c')) {
-      exit();
-      return;
+    if (key.ctrl && input === 'c') { exit(); return; }
+
+    // Floating preview captures all keys while open
+    if (preview.isOpen) {
+      if (key.escape || input === 'q') { preview.close(); return; }
+      const previewLines = preview.filePath ? 999 : 0; // maxScroll computed inside component
+      const pageSize = Math.max(1, previewContentRows - 2);
+      if (key.upArrow   || input === 'k') { preview.scrollBy(-1,       9999); return; }
+      if (key.downArrow || input === 'j') { preview.scrollBy(+1,       9999); return; }
+      if (key.pageUp    || input === 'u') { preview.scrollBy(-pageSize, 9999); return; }
+      if (key.pageDown  || input === 'd') { preview.scrollBy(+pageSize, 9999); return; }
+      if (input === 'g') { preview.scrollBy(-99999, 9999); return; }
+      if (input === 'G') { preview.scrollBy(+99999, 9999); return; }
+      // Mouse scroll passes through to preview
+      if (input.startsWith('[<')) {
+        const mouse = parseSgrMouse(Buffer.from(input));
+        if (mouse?.type === 'scroll_up')   { preview.scrollBy(-3, 9999); return; }
+        if (mouse?.type === 'scroll_down') { preview.scrollBy(+3, 9999); return; }
+      }
+      return; // swallow everything else
     }
+
+    if (input === 'q') { exit(); return; }
 
     // Mouse events
     if (input.startsWith('[<')) {
@@ -99,7 +134,7 @@ export function App({ filePath }: AppProps) {
       // Resolve mouse position to a link span
       const resolveLinkAtMouse = () => {
         if (sidebarOpen) return null;
-        const lineIndex = scrollOffset + (mouse!.y - 4);
+        const lineIndex = scrollOffset + (mouse!.y - 3);
         const col = mouse!.x - 1 - leftMargin;
         return links.find(
           (l) => l.lineIndex === lineIndex && col >= l.colStart && col < l.colEnd,
@@ -113,11 +148,19 @@ export function App({ filePath }: AppProps) {
         return;
       }
 
-      // Click: if on a link, pin the URL in the status bar so the terminal
-      // can recognise it (e.g. iTerm2 Cmd+click). Click anywhere else clears it.
+      // Click: handle link clicks
       if (mouse?.type === 'press' && !sidebarOpen) {
         const hit = resolveLinkAtMouse();
-        setHoveredLink(hit?.url ?? null);
+        if (hit) {
+          const mdPath = resolveMarkdownLink(hit.url, filePath);
+          if (mdPath) {
+            preview.open(mdPath);
+          } else {
+            setHoveredLink(hit.url);
+          }
+        } else {
+          setHoveredLink(null);
+        }
       }
 
       // Click in sidebar
@@ -128,7 +171,7 @@ export function App({ filePath }: AppProps) {
         //   row  5    : "Contents" title
         //   row  6    : ─ separator
         //   row  7+   : entry rows
-        // So: entryRow (0-indexed within visible entries) = mouse.y - 7
+        // So: entryRow (0-indexed within visible entries) = mouse.y - 5
         //
         // Must mirror Sidebar.tsx: visibleRows = height - 6
         const sidebarVisibleRows = Math.max(1, visibleLines - 6);
@@ -139,7 +182,7 @@ export function App({ filePath }: AppProps) {
             tocEntries.length - sidebarVisibleRows,
           ),
         );
-        const entryRow = mouse.y - 7;
+        const entryRow = mouse.y - 5;
         const clickedEntryIndex = scrollStart + entryRow;
         if (clickedEntryIndex >= 0 && clickedEntryIndex < tocEntries.length) {
           toc.setCursor(clickedEntryIndex);
@@ -237,6 +280,16 @@ export function App({ filePath }: AppProps) {
         tocOpen={sidebarOpen}
         hoveredLink={hoveredLink}
       />
+
+      {/* Floating markdown preview — rendered last so it layers on top */}
+      {preview.isOpen && preview.filePath && (
+        <FloatingPreview
+          filePath={preview.filePath}
+          terminalWidth={terminalWidth}
+          terminalHeight={terminalHeight}
+          scrollOffset={preview.scrollOffset}
+        />
+      )}
     </Box>
   );
 }
