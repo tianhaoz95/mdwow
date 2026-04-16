@@ -9,6 +9,7 @@ process.env.FORCE_COLOR = '3';
 
 import chalk from 'chalk';
 import { highlight as cliHighlight, supportsLanguage } from 'cli-highlight';
+import { darkRendererTheme, type RendererTheme } from '../themes.js';
 import { renderMermaidASCII } from 'beautiful-mermaid';
 import type {
   Root,
@@ -37,6 +38,15 @@ import type {
 // Force colors even when stdout is not a TTY (e.g. piped)
 chalk.level = 3;
 
+// ── Active theme ──────────────────────────────────────────────────────────────
+// All render functions read from this. Call setRendererTheme() to switch themes.
+
+let T: RendererTheme = darkRendererTheme;
+
+export function setRendererTheme(theme: RendererTheme): void {
+  T = theme;
+}
+
 // ── inline rendering ──────────────────────────────────────────────────────────
 
 function renderInline(node: PhrasingContent): string {
@@ -44,21 +54,21 @@ function renderInline(node: PhrasingContent): string {
     case 'text':
       return (node as MdastText).value;
     case 'strong':
-      return chalk.bold.whiteBright((node as Strong).children.map(renderInline).join(''));
+      return chalk.bold[T.bold]((node as Strong).children.map(renderInline).join(''));
     case 'emphasis':
       return chalk.italic((node as Emphasis).children.map(renderInline).join(''));
     case 'delete':
       return chalk.dim((node as Delete).children.map(renderInline).join(''));
     case 'inlineCode':
-      return chalk.bgGray.yellowBright(` ${(node as InlineCode).value} `);
+      return (chalk[T.inlineCodeBg] as typeof chalk)[T.inlineCodeFg](` ${(node as InlineCode).value} `);
     case 'link': {
       const n = node as Link;
       const label = n.children.length > 0 ? n.children.map(renderInline).join('') : n.url;
-      return chalk.blueBright.underline(label);
+      return chalk[T.link].underline(label);
     }
     case 'image': {
       const n = node as Image;
-      return chalk.blue.dim(`[image: ${n.alt || n.url}]`);
+      return chalk[T.image].dim(`[image: ${n.alt || n.url}]`);
     }
     case 'break':
       return '\n';
@@ -167,7 +177,7 @@ function renderInlinesTracked(
     if (node.type === 'link') {
       const n = node as Link;
       const label = n.children.length > 0 ? n.children.map(renderInline).join('') : n.url;
-      const rendered = chalk.blueBright.underline(stripAnsi(label));
+      const rendered = chalk[T.link].underline(stripAnsi(label));
       const visLen = visibleLength(rendered);
       spans.push({ colStart: col, colEnd: col + visLen, url: n.url });
       parts.push(rendered);
@@ -221,16 +231,16 @@ function wrapLine(line: string, width: number): string[] {
 
 function renderHeadingFromText(depth: number, text: string, width: number): string[] {
   if (depth === 1) {
-    const bar = chalk.magentaBright('═'.repeat(width));
-    return ['', bar, chalk.bold.magentaBright('  ' + text), bar, ''];
+    const bar = chalk[T.h1Bar]('═'.repeat(width));
+    return ['', bar, chalk.bold[T.h1Bar]('  ' + text), bar, ''];
   }
   if (depth === 2) {
-    return ['', chalk.bold.cyanBright(text), chalk.cyanBright.dim('─'.repeat(width))];
+    return ['', chalk.bold[T.h2Text](text), chalk[T.h2Underline].dim('─'.repeat(width))];
   }
-  if (depth === 3) return ['', chalk.bold.yellowBright('▸ ' + text)];
-  if (depth === 4) return ['', chalk.bold.greenBright(text)];
-  if (depth === 5) return ['', chalk.blueBright(text)];
-  return ['', chalk.white.dim(text)];
+  if (depth === 3) return ['', chalk.bold[T.h3]('▸ ' + text)];
+  if (depth === 4) return ['', chalk.bold[T.h4](text)];
+  if (depth === 5) return ['', chalk[T.h5](text)];
+  return ['', chalk[T.h6].dim(text)];
 }
 
 function renderHeading(node: Heading, width: number): string[] {
@@ -255,25 +265,25 @@ function renderCode(node: Code, width: number): string[] {
   const innerWidth = Math.max(10, width - 2);
   const langLabel = node.lang ? ` ${node.lang} ` : '';
   const topFill = '─'.repeat(Math.max(0, innerWidth - langLabel.length));
-  const topBorder = chalk.cyan.dim(`┌${topFill}${langLabel}┐`);
-  const bottomBorder = chalk.cyan.dim(`└${'─'.repeat(innerWidth)}┘`);
+  const topBorder = chalk[T.codeBorder].dim(`┌${topFill}${langLabel}┐`);
+  const bottomBorder = chalk[T.codeBorder].dim(`└${'─'.repeat(innerWidth)}┘`);
 
-  // Syntax highlight if the language is recognised, else fall back to plain green
+  // Syntax highlight if the language is recognised, else fall back to theme code color
   let highlighted: string;
   try {
     if (lang && supportsLanguage(lang)) {
       highlighted = cliHighlight(node.value, { language: lang, ignoreIllegals: true });
     } else {
-      highlighted = chalk.greenBright(node.value);
+      highlighted = chalk[T.codeText](node.value);
     }
   } catch {
-    highlighted = chalk.greenBright(node.value);
+    highlighted = chalk[T.codeText](node.value);
   }
 
   const lines = highlighted.split('\n');
   return [
     topBorder,
-    ...lines.map((l) => chalk.cyan.dim('│ ') + l),
+    ...lines.map((l) => chalk[T.codeBorder].dim('│ ') + l),
     bottomBorder,
     '',
   ];
@@ -283,20 +293,19 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const innerWidth = Math.max(10, width - 2);
   const label = ' mermaid ';
   const topFill = '─'.repeat(Math.max(0, innerWidth - label.length));
-  const topBorder = chalk.magenta.dim(`┌${topFill}${label}┐`);
-  const bottomBorder = chalk.magenta.dim(`└${'─'.repeat(innerWidth)}┘`);
+  const topBorder = chalk[T.mermaidBorder].dim(`┌${topFill}${label}┐`);
+  const bottomBorder = chalk[T.mermaidBorder].dim(`└${'─'.repeat(innerWidth)}┘`);
 
   let ascii: string;
   try {
     ascii = renderMermaidASCII(source);
   } catch (err) {
-    // If parsing fails, fall back to showing the raw source
     const lines = source.split('\n');
     return [
       topBorder,
       chalk.yellow.dim('  ⚠ Could not render diagram'),
       '',
-      ...lines.map((l) => chalk.magenta.dim('│ ') + chalk.dim(l)),
+      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + chalk.dim(l)),
       bottomBorder,
       '',
     ];
@@ -305,14 +314,14 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const diagramLines = ascii.split('\n');
   return [
     topBorder,
-    ...diagramLines.map((l) => chalk.magenta.dim('│ ') + chalk.cyanBright(l)),
+    ...diagramLines.map((l) => chalk[T.mermaidBorder].dim('│ ') + chalk[T.mermaidDiagram](l)),
     bottomBorder,
     '',
   ];
 }
 
 function renderBlockquote(node: Blockquote, width: number, indent = 0): string[] {
-  const border = chalk.magentaBright('│ ');
+  const border = chalk[T.blockquoteBorder]('│ ');
   const out: string[] = [];
   for (const child of node.children) {
     if (child.type === 'paragraph') {
@@ -345,8 +354,8 @@ function renderListItems(node: List, width: number, depth = 0): string[] {
   for (let i = 0; i < node.children.length; i++) {
     const item = node.children[i] as ListItem;
     const bullet = ordered
-      ? chalk.yellowBright(`${i + 1}.`)
-      : chalk.cyanBright('•');
+      ? chalk[T.number](`${i + 1}.`)
+      : chalk[T.bullet]('•');
 
     for (const child of item.children) {
       if (child.type === 'paragraph') {
@@ -393,14 +402,14 @@ function renderTable(node: Table, width: number): string[] {
   });
 
   const pad = (s: string, w: number) => s + ' '.repeat(Math.max(0, w - s.length));
-  const sep = chalk.cyan('├' + colWidths.map((w) => '─'.repeat(w + 2)).join('┼') + '┤');
+  const sep = chalk[T.tableBorder]('├' + colWidths.map((w) => '─'.repeat(w + 2)).join('┼') + '┤');
 
   const renderRow = (row: TableRow, isHeader: boolean): string => {
     const cells = (row.children as TableCell[]).map((cell, ci) => {
       const t = pad(getCellText(cell), colWidths[ci] ?? 0);
-      return isHeader ? chalk.bold.whiteBright(t) : chalk.white(t);
+      return isHeader ? chalk.bold[T.tableHeader](t) : chalk[T.tableCell](t);
     });
-    return chalk.cyan('│') + cells.map((c) => ' ' + c + ' ' + chalk.cyan('│')).join('');
+    return chalk[T.tableBorder]('│') + cells.map((c) => ' ' + c + ' ' + chalk[T.tableBorder]('│')).join('');
   };
 
   const out: string[] = [];
@@ -414,7 +423,7 @@ function renderTable(node: Table, width: number): string[] {
 }
 
 function renderHr(width: number): string[] {
-  return [chalk.cyan.dim('─'.repeat(Math.max(1, width))), ''];
+  return [chalk[T.hr].dim('─'.repeat(Math.max(1, width))), ''];
 }
 
 // ── Link collection helpers for nested blocks ─────────────────────────────────

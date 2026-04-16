@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Text } from 'ink';
-import { theme } from '../theme.js';
+import type { InkTheme } from '../themes.js';
 
 type HeaderProps = {
   filename: string;
   isLive: boolean;
   lastUpdated: Date | null;
+  inkTheme: InkTheme;
 };
 
-export function Header({ filename, isLive, lastUpdated }: HeaderProps) {
+export function Header({ filename, isLive, lastUpdated, inkTheme: t }: HeaderProps) {
   const [flash, setFlash] = useState(false);
   const [prevUpdated, setPrevUpdated] = useState(lastUpdated);
 
@@ -25,7 +26,7 @@ export function Header({ filename, isLive, lastUpdated }: HeaderProps) {
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '--:--:--';
 
-  const liveStyle = flash ? theme.liveIndicatorUpdating : theme.liveIndicator;
+  const liveStyle = flash ? t.liveIndicatorUpdating : t.liveIndicator;
 
   return (
     <Box
@@ -33,21 +34,17 @@ export function Header({ filename, isLive, lastUpdated }: HeaderProps) {
       justifyContent="space-between"
       paddingX={1}
       borderStyle="single"
-      borderColor="blue"
+      borderColor={t.borderColor}
     >
       <Box gap={1}>
-        <Text {...theme.appName} backgroundColor="blue">
+        <Text {...t.appName} backgroundColor={t.headerBg}>
           {' mdwow '}
         </Text>
         <Text dimColor>·</Text>
-        <Text {...theme.header}>{filename}</Text>
+        <Text {...t.header}>{filename}</Text>
       </Box>
       <Box gap={1}>
-        {isLive && (
-          <Text {...liveStyle}>
-            {'⬤ live'}
-          </Text>
-        )}
+        {isLive && <Text {...liveStyle}>{'⬤ live'}</Text>}
         <Text dimColor>{timeStr}</Text>
       </Box>
     </Box>

@@ -12,8 +12,9 @@ import { useMouseScroll } from './hooks/useMouseScroll.js';
 import { useToc } from './hooks/useToc.js';
 import { useFloatingPreview } from './hooks/useFloatingPreview.js';
 import { parseMarkdown } from './utils/parser.js';
-import { renderToLinesWithLinks, buildToc } from './utils/renderer.js';
+import { renderToLinesWithLinks, buildToc, setRendererTheme } from './utils/renderer.js';
 import { parseSgrMouse } from './utils/mouse.js';
+import { darkRendererTheme, lightRendererTheme, darkInkTheme, lightInkTheme, type ThemeMode } from './themes.js';
 import type { LinkSpan } from './utils/renderer.js';
 
 /** Resolve a link URL to an absolute path if it points to a local .md file. */
@@ -54,6 +55,8 @@ export function App({ filePath }: AppProps) {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const preview = useFloatingPreview();
+  const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
+  const inkTheme = themeMode === 'dark' ? darkInkTheme : lightInkTheme;
 
   // TOC entries — recomputed when AST or width changes (width affects line counts)
   // We use terminalWidth here because buildToc needs to match renderToLines widths
@@ -76,11 +79,12 @@ export function App({ filePath }: AppProps) {
   const clampedWidth = Math.min(Math.max(40, effectiveWidth), contentAreaWidth);
   const leftMargin = sidebarOpen ? 0 : Math.floor((terminalWidth - clampedWidth) / 2);
 
-  // Render lines at the effective content width
+  // Render lines at the effective content width (re-renders when theme changes)
   const { lines, links } = useMemo(() => {
     if (!ast) return { lines: [] as string[], links: [] as LinkSpan[] };
+    setRendererTheme(themeMode === 'dark' ? darkRendererTheme : lightRendererTheme);
     return renderToLinesWithLinks(ast, clampedWidth);
-  }, [ast, clampedWidth]);
+  }, [ast, clampedWidth, themeMode]);
 
   const totalLines = lines.length;
   const maxScroll = Math.max(0, totalLines - visibleLines);
@@ -106,19 +110,29 @@ export function App({ filePath }: AppProps) {
     // Floating preview captures all keys while open
     if (preview.isOpen) {
       if (key.escape || input === 'q') { preview.close(); return; }
-      const previewLines = preview.filePath ? 999 : 0; // maxScroll computed inside component
       const pageSize = Math.max(1, previewContentRows - 2);
-      if (key.upArrow   || input === 'k') { preview.scrollBy(-1,       9999); return; }
-      if (key.downArrow || input === 'j') { preview.scrollBy(+1,       9999); return; }
-      if (key.pageUp    || input === 'u') { preview.scrollBy(-pageSize, 9999); return; }
-      if (key.pageDown  || input === 'd') { preview.scrollBy(+pageSize, 9999); return; }
+      if (key.upArrow   || input === 'k') { preview.scrollBy(-1,        9999); return; }
+      if (key.downArrow || input === 'j') { preview.scrollBy(+1,        9999); return; }
+      if (key.pageUp    || input === 'u') { preview.scrollBy(-pageSize,  9999); return; }
+      if (key.pageDown  || input === 'd') { preview.scrollBy(+pageSize,  9999); return; }
       if (input === 'g') { preview.scrollBy(-99999, 9999); return; }
       if (input === 'G') { preview.scrollBy(+99999, 9999); return; }
-      // Mouse scroll passes through to preview
       if (input.startsWith('[<')) {
         const mouse = parseSgrMouse(Buffer.from(input));
         if (mouse?.type === 'scroll_up')   { preview.scrollBy(-3, 9999); return; }
         if (mouse?.type === 'scroll_down') { preview.scrollBy(+3, 9999); return; }
+        // Click outside the floating window → close it
+        if (mouse?.type === 'press') {
+          const floatWidth  = Math.max(40, Math.floor(terminalWidth  * 0.72));
+          const floatHeight = Math.max(10, Math.floor(terminalHeight * 0.75));
+          const floatLeft   = Math.max(0, Math.floor((terminalWidth  - floatWidth)  / 2)) + 1; // 1-indexed
+          const floatTop    = Math.max(0, Math.floor((terminalHeight - floatHeight) / 2) - 1) + 1;
+          const floatRight  = floatLeft + floatWidth  - 1;
+          const floatBottom = floatTop  + floatHeight - 1;
+          const inside = mouse.x >= floatLeft && mouse.x <= floatRight
+                      && mouse.y >= floatTop  && mouse.y <= floatBottom;
+          if (!inside) { preview.close(); return; }
+        }
       }
       return; // swallow everything else
     }
@@ -212,6 +226,12 @@ export function App({ filePath }: AppProps) {
     // Toggle sidebar
     if (input === 'b') { toc.toggle(); return; }
 
+    // Toggle theme
+    if (input === 't') {
+      setThemeMode((m) => m === 'dark' ? 'light' : 'dark');
+      return;
+    }
+
     // Reading width
     if (input === '+' || input === '=') {
       setReadingWidth((w) => {
@@ -256,7 +276,7 @@ export function App({ filePath }: AppProps) {
 
   return (
     <Box flexDirection="column" height={terminalHeight}>
-      <Header filename={filename} isLive={isWatching} lastUpdated={lastUpdated} />
+      <Header filename={filename} isLive={isWatching} lastUpdated={lastUpdated} inkTheme={inkTheme} />
 
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         {sidebarOpen && (
@@ -265,6 +285,7 @@ export function App({ filePath }: AppProps) {
             cursorIndex={toc.cursorIndex}
             activeIndex={toc.activeIndex}
             height={visibleLines}
+            inkTheme={inkTheme}
           />
         )}
         <Box flexDirection="column" flexGrow={1} overflow="hidden">
@@ -279,6 +300,8 @@ export function App({ filePath }: AppProps) {
         readingWidth={readingWidth !== null ? clampedWidth : null}
         tocOpen={sidebarOpen}
         hoveredLink={hoveredLink}
+        themeMode={themeMode}
+        inkTheme={inkTheme}
       />
 
       {/* Floating markdown preview — rendered last so it layers on top */}
