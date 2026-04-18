@@ -8,7 +8,7 @@ npx mdwow-cli README.md
 
 [📷 demo.gif]
 
-![📷 demo.gif](./demo.gif)
+![📷 demo.gif](./asset/demo.gif)
 
 ---
 
