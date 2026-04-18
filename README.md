@@ -6,6 +6,10 @@ A beautiful, live Markdown viewer for the terminal. Open any `.md` file and get 
 npx mdwow-cli README.md
 ```
 
+[📷 demo.gif]
+
+![📷 demo.gif](./demo.gif)
+
 ---
 
 ## Features
