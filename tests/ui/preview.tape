@@ -7,25 +7,37 @@ Set Padding 20
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 100ms
 
-# Hide the setup and long startup
+# Start the app hiddenly
 Hide
 Type "node dist/cli.js TEST.md"
 Enter
-Sleep 20s
+Sleep 25s
 Ctrl+L
 Sleep 2s
 Show
 
-# Smooth scroll down
-Repeat 40 {
-  Down 1
-  Sleep 100ms
-}
+# Smooth-ish scroll by repeating commands (Repeat is not a core VHS command)
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
+Down 5
+Sleep 1s
 
-# Wait at the bottom for a bit
+# Wait at the bottom
 Sleep 5s
 
-# Hide the exit
+# Quit
 Hide
 Type "q"
 Sleep 2s
