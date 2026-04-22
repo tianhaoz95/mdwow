@@ -46,27 +46,37 @@ jobs:
         env:
           FORCE_COLOR: 3
 
-      - name: Upload to Imgur
-        id: imgur
-        uses: devops-infra/action-imgur@master
+      - name: Upload Main Screenshot
+        id: imgur_main
+        uses: devicons/public-upload-to-imgur@v2.2.2
         with:
           client_id: ${{ secrets.IMGUR_CLIENT_ID }}
-          path: tests/ui/screenshots/*.png
+          path: tests/ui/screenshots/preview-main.png
+
+      - name: Upload Scrolled Screenshot
+        id: imgur_scrolled
+        uses: devicons/public-upload-to-imgur@v2.2.2
+        with:
+          client_id: ${{ secrets.IMGUR_CLIENT_ID }}
+          path: tests/ui/screenshots/preview-scrolled.png
 
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
-            const results = JSON.parse(process.env.IMGUR_JSON);
-            let body = "## 🎨 Visual Preview (mdwow)\n\nReview the visual changes below:\n\n";
-            for (const key in results) {
-              body += `### ${key}\n![${key}](${results[key]})\n\n`;
-            }
+            const mainImg = JSON.parse(process.env.MAIN_IMG)[0];
+            const scrolledImg = JSON.parse(process.env.SCROLLED_IMG)[0];
+            
+            let body = "### 🎨 Visual Preview (mdwow)\n\n";
+            body += `#### Main View\n${mainImg}\n\n`;
+            body += `#### Scrolled View (Mermaid, Tables, etc.)\n${scrolledImg}\n\n`;
+            
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: body
-            })
+            });
         env:
-          IMGUR_JSON: ${{ steps.imgur.outputs.imgur_urls }}
+          MAIN_IMG: ${{ steps.imgur_main.outputs.markdown_urls }}
+          SCROLLED_IMG: ${{ steps.imgur_scrolled.outputs.markdown_urls }}
