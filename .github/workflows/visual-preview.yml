@@ -43,7 +43,7 @@ jobs:
         env:
           FORCE_COLOR: 3
 
-      - name: Push Screenshots to Previews Branch
+      - name: Push GIF to Previews Branch
         id: host
         run: |
           git config --global user.name "github-actions[bot]"
@@ -54,33 +54,28 @@ jobs:
           DIR="previews/pr-$PR_NUM/run-$RUN_ID"
           REPO="${{ github.repository }}"
           
-          # Use a temporary clone to push to the previews branch
           git clone --depth 1 --branch visual-previews https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$REPO _previews || \
           (mkdir _previews && cd _previews && git init && git checkout -b visual-previews && git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$REPO)
           
           mkdir -p _previews/$DIR
-          cp tests/ui/screenshots/*.png _previews/$DIR/
+          cp tests/ui/screenshots/preview.gif _previews/$DIR/
           
           cd _previews
           git add .
-          git commit -m "Upload previews for PR $PR_NUM (run $RUN_ID)"
+          git commit -m "Upload animated preview for PR $PR_NUM (run $RUN_ID)"
           git push origin visual-previews
           
           BASE_URL="https://raw.githubusercontent.com/$REPO/visual-previews/$DIR"
-          echo "main_url=$BASE_URL/preview-main.png" >> $GITHUB_OUTPUT
-          echo "scrolled_url=$BASE_URL/preview-scrolled.png" >> $GITHUB_OUTPUT
+          echo "gif_url=$BASE_URL/preview.gif" >> $GITHUB_OUTPUT
 
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
-            const mainImg = process.env.MAIN_URL;
-            const scrolledImg = process.env.SCROLLED_URL;
-            
-            let body = "### 🎨 Visual Preview (mdwow)\n\n";
-            body += `#### Main View\n![Main View](${mainImg})\n\n`;
-            body += `#### Scrolled View (Mermaid, Tables, etc.)\n![Scrolled View](${scrolledImg})\n\n`;
-            body += "\n---\n*Screenshots hosted on visual-previews branch*";
+            const gifUrl = process.env.GIF_URL;
+            let body = "### 🎬 Visual Preview (mdwow)\n\n";
+            body += `![Animated Preview](${gifUrl})\n\n`;
+            body += "\n---\n*Animated preview hosted on visual-previews branch*";
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -89,5 +84,4 @@ jobs:
               body: body
             });
         env:
-          MAIN_URL: ${{ steps.host.outputs.main_url }}
-          SCROLLED_URL: ${{ steps.host.outputs.scrolled_url }}
+          GIF_URL: ${{ steps.host.outputs.gif_url }}
