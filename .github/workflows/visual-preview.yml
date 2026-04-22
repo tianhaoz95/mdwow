@@ -26,15 +26,19 @@ jobs:
       - name: Build mdwow
         run: npm run build
 
-      - name: Install System Dependencies
+      - name: Install VHS and Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ttyd ffmpeg
+          curl -sS https://webinstall.dev/vhs | bash
+          # Copy to a global path to ensure it's available
+          sudo cp $HOME/.local/bin/vhs /usr/local/bin/vhs
+
+      - name: Create screenshots directory
+        run: mkdir -p tests/ui/screenshots
 
       - name: Generate Screenshots with VHS
-        uses: charmbracelet/vhs-action@v2
-        with:
-          path: tests/ui/preview.tape
+        run: vhs tests/ui/preview.tape
         env:
           FORCE_COLOR: 3
 
