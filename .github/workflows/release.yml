@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   id-token: write  # Required for OIDC provenance
+  packages: write  # Required for GitHub Packages registry
 
 jobs:
   release:
@@ -71,6 +72,22 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Set up Node.js for GitHub Packages publish
+        if: steps.version.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Publish to GitHub Packages
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          npm pkg set name='@tianhaoz95/mdwow-cli'
+          npm publish --access public
+          npm pkg set name='mdwow-cli'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create git tag and GitHub release
         if: steps.version.outputs.changed == 'true'
