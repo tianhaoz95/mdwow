@@ -36,10 +36,6 @@ jobs:
           npm -v
           ls -l TEST.md
 
-      - name: Smoke Test App
-        run: |
-          timeout 5s node dist/cli.js TEST.md || true
-
       - name: Install VHS and Dependencies
         run: |
           sudo mkdir -p /etc/apt/keyrings
@@ -52,10 +48,12 @@ jobs:
         run: mkdir -p tests/ui/screenshots
 
       - name: Generate Screenshots with VHS
-        run: vhs tests/ui/preview.tape
+        run: xvfb-run vhs tests/ui/preview.tape
         env:
           FORCE_COLOR: 3
           TERM: xterm-256color
+          COLUMNS: 100
+          LINES: 40
 
       - name: Push GIF to Previews Branch
         id: host
