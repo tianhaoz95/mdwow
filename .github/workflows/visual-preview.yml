@@ -26,23 +26,10 @@ jobs:
       - name: Build mdwow
         run: npm run build
 
-      - name: Install VHS
-        run: |
-          # Install vhs and its dependencies
-          # We use the binary for speed
-          curl -sS https://webinstall.dev/vhs | bash
-          # Add to PATH (webinstall installs to ~/.local/bin)
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          
-          # VHS requires ttyd and ffmpeg for recording (even for screenshots often)
-          sudo apt-get update && sudo apt-get install -y ttyd ffmpeg
-
-      - name: Create screenshots directory
-        run: mkdir -p tests/ui/screenshots
-
       - name: Generate Screenshots with VHS
-        run: |
-          vhs tests/ui/preview.tape
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: tests/ui/preview.tape
         env:
           FORCE_COLOR: 3
 
