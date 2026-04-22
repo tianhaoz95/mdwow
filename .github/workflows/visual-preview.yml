@@ -42,13 +42,13 @@ jobs:
         env:
           FORCE_COLOR: 3
 
-      - name: Upload Screenshots to 0x0.st
+      - name: Upload Screenshots to Catbox
         id: upload
         run: |
-          MAIN_URL=$(curl -F'file=@tests/ui/screenshots/preview-main.png' https://0x0.st)
+          MAIN_URL=$(curl -F "reqtype=fileupload" -F "fileToUpload=@tests/ui/screenshots/preview-main.png" https://catbox.moe/user/api.php)
           echo "main_url=$MAIN_URL" >> $GITHUB_OUTPUT
           
-          SCROLLED_URL=$(curl -F'file=@tests/ui/screenshots/preview-scrolled.png' https://0x0.st)
+          SCROLLED_URL=$(curl -F "reqtype=fileupload" -F "fileToUpload=@tests/ui/screenshots/preview-scrolled.png" https://catbox.moe/user/api.php)
           echo "scrolled_url=$SCROLLED_URL" >> $GITHUB_OUTPUT
 
       - name: Comment on PR
@@ -61,7 +61,7 @@ jobs:
             let body = "### 🎨 Visual Preview (mdwow)\n\n";
             body += `#### Main View\n![Main View](${mainImg})\n\n`;
             body += `#### Scrolled View (Mermaid, Tables, etc.)\n![Scrolled View](${scrolledImg})\n\n`;
-            body += "\n---\n*Screenshots hosted temporarily on 0x0.st*";
+            body += "\n---\n*Screenshots hosted temporarily on catbox.moe*";
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
