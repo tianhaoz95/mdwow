@@ -7,42 +7,38 @@ Set Padding 20
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 100ms
 
-# Start the app
-Hide
+# Initial wait for shell ready
+Sleep 5s
+
+# Type and launch
 Type "node dist/cli.js TEST.md"
 Enter
-# Extra kick just in case
-Sleep 1s
+Sleep 2s
+# Extra Enter in case of CI lag
 Enter
-# Massive wait for CI
-Sleep 120s
-# Force redraw
+
+# Wait for TUI to initialize (it's slow in CI)
+Sleep 30s
+
+# Force a redraw
 Ctrl+L
 Sleep 5s
-Show
 
-# Smooth-ish scroll
+# Smooth scroll
 Down 5
-Sleep 1s
+Sleep 2s
 Down 5
-Sleep 1s
+Sleep 2s
 Down 5
-Sleep 1s
+Sleep 2s
 Down 5
-Sleep 1s
+Sleep 2s
 Down 5
-Sleep 1s
-Down 5
-Sleep 1s
-Down 5
-Sleep 1s
-Down 5
-Sleep 1s
+Sleep 2s
 
-# Wait at the bottom
+# Linger at the end
 Sleep 10s
 
-# Hide the exit
-Hide
+# Exit
 Type "q"
 Sleep 2s
