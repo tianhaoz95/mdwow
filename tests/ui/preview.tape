@@ -6,17 +6,20 @@ Set Height 1000
 Set Padding 20
 Set Theme "Catppuccin Mocha"
 
-# Run the app with TEST.md
+# Hide the command typing
+Hide
 Type "node dist/cli.js TEST.md"
 Enter
-Sleep 3s
+# Give it plenty of time to boot and render in CI
+Sleep 15s
+Show
 
 # Capture the first page
 Screenshot tests/ui/screenshots/preview-main.png
 
 # Scroll down a bit to show more content (Mermaid, etc.)
 Type "jjjjjjjjjjjjjjjjjjjj"
-Sleep 1s
+Sleep 5s
 Screenshot tests/ui/screenshots/preview-scrolled.png
 
 # Quit
