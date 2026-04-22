@@ -1,4 +1,5 @@
 import React from 'react';
+import { Readable } from 'stream';
 import { render } from 'ink';
 import meow from 'meow';
 import { existsSync } from 'fs';
@@ -54,11 +55,19 @@ process.on('exit', () => {
 process.on('SIGINT', () => process.exit(0));
 process.on('SIGTERM', () => process.exit(0));
 
+import { Readable } from 'stream';
+
+// ... (imports)
+
 // Ink requires raw mode for interactive input.
 // In non-TTY environments (like some CI pipes), we fall back to non-interactive mode.
 const isInteractive = process.stdin.isTTY;
 
+// If not interactive, use a dummy stream to prevent Ink from trying to set raw mode on process.stdin
+const inputStream = isInteractive ? process.stdin : new Readable({ read() {} });
+
 const { waitUntilExit } = render(<App filePath={resolved} />, {
+  stdin: inputStream as any,
   exitOnCtrlC: isInteractive,
   patchConsole: true,
 });
