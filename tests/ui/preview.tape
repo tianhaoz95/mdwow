@@ -1,22 +1,44 @@
-Output: png
+Output tests/ui/screenshots/preview.gif
+
 Set FontSize 16
 Set Width 1200
 Set Height 1000
 Set Padding 20
 Set Theme "Catppuccin Mocha"
+Set TypingSpeed 100ms
 
-# Run the app with TEST.md
+# Initial wait for shell ready
+Sleep 5s
+
+# Type and launch
 Type "node dist/cli.js TEST.md"
 Enter
-Sleep 3s
+Sleep 2s
+# Extra Enter in case of CI lag
+Enter
 
-# Capture the first page
-Screenshot tests/ui/screenshots/preview-main.png
+# Wait for TUI to initialize (it's slow in CI)
+Sleep 30s
 
-# Scroll down a bit to show more content (Mermaid, etc.)
-Type "jjjjjjjjjjjjjjjjjjjj"
-Sleep 1s
-Screenshot tests/ui/screenshots/preview-scrolled.png
+# Force a redraw
+Ctrl+L
+Sleep 5s
 
-# Quit
+# Smooth scroll
+Down 5
+Sleep 2s
+Down 5
+Sleep 2s
+Down 5
+Sleep 2s
+Down 5
+Sleep 2s
+Down 5
+Sleep 2s
+
+# Linger at the end
+Sleep 10s
+
+# Exit
 Type "q"
+Sleep 2s

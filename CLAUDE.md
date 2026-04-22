@@ -1,10 +1,19 @@
-# CLAUDE.md
+# GEMINI.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Gemini CLI when working with code in this repository.
 
 ## Project Overview
 
 **mdwow** is a live Markdown viewer for the terminal — a TUI (Terminal User Interface) tool built with Ink (React for terminals). It renders `.md` files with ANSI colors, syntax highlighting, and ASCII Mermaid diagrams, and auto-updates when the file changes on disk.
+
+## Workflow
+
+The `main` branch is protected. All development must occur on feature branches and be merged via Pull Requests.
+
+1. **Create Feature Branch**: `git checkout -b feature/name`
+2. **Commit Changes**: Use clear and concise commit messages.
+3. **Open Pull Request**: A visual preview will be automatically generated and commented on the PR.
+4. **Merge**: Once approved, merge into `main`.
 
 ## Commands
 

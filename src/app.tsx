@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import { Box, Text, useApp, useInput, useStdout, useStdin } from 'ink';
 import { basename, resolve, dirname, extname, isAbsolute } from 'path';
 import { existsSync } from 'fs';
 import { Header } from './components/Header.js';
@@ -35,6 +35,7 @@ const WIDTH_STEP = 10;
 export function App({ filePath }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const { isRawModeSupported } = useStdin();
 
   const terminalWidth = stdout?.columns ?? 80;
   const terminalHeight = stdout?.rows ?? 24;
@@ -104,7 +105,7 @@ export function App({ filePath }: AppProps) {
   // Floating preview visible lines for its own scroll calculations
   const previewContentRows = Math.max(1, Math.floor(terminalHeight * 0.75) - 7);
 
-  useInput((input, key) => {
+  const handleInput = useCallback((input: string, key: any) => {
     if (key.ctrl && input === 'c') { exit(); return; }
 
     // Floating preview captures all keys while open
@@ -179,15 +180,6 @@ export function App({ filePath }: AppProps) {
 
       // Click in sidebar
       if (mouse?.type === 'press' && sidebarOpen && mouse.x <= SIDEBAR_WIDTH) {
-        // Terminal row layout (1-indexed):
-        //   rows 1-3  : header (border-top + content + border-bottom)
-        //   row  4    : sidebar border-top
-        //   row  5    : "Contents" title
-        //   row  6    : ─ separator
-        //   row  7+   : entry rows
-        // So: entryRow (0-indexed within visible entries) = mouse.y - 5
-        //
-        // Must mirror Sidebar.tsx: visibleRows = height - 6
         const sidebarVisibleRows = Math.max(1, visibleLines - 6);
         const scrollStart = Math.max(
           0,
@@ -257,7 +249,12 @@ export function App({ filePath }: AppProps) {
       if (input === 'G') return clamp(maxScroll);
       return prev;
     });
-  });
+  }, [exit, preview, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath]);
+
+  if (isRawModeSupported) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useInput(handleInput);
+  }
 
   const visibleContent = lines.slice(scrollOffset, scrollOffset + visibleLines);
   const filename = basename(filePath);
