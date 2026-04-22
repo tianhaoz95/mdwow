@@ -1,4 +1,5 @@
-Output: png
+Output tests/ui/screenshots/preview.gif
+
 Set FontSize 16
 Set Width 1200
 Set Height 1000
