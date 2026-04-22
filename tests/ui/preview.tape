@@ -7,18 +7,21 @@ Set Padding 20
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 100ms
 
-# Start the app hiddenly to save GIF size/time
+# Start the app
 Hide
 Type "node dist/cli.js TEST.md"
 Enter
-# CI is slow, give it a massive buffer
-Sleep 45s
-# Force redraw to ensure TUI is visible
+# Extra kick just in case
+Sleep 1s
+Enter
+# Massive wait for CI
+Sleep 120s
+# Force redraw
 Ctrl+L
 Sleep 5s
 Show
 
-# Smooth scroll through the document
+# Smooth-ish scroll
 Down 5
 Sleep 1s
 Down 5
@@ -36,7 +39,7 @@ Sleep 1s
 Down 5
 Sleep 1s
 
-# Final long wait at the bottom to see everything
+# Wait at the bottom
 Sleep 10s
 
 # Hide the exit
