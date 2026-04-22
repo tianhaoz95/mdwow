@@ -289,6 +289,10 @@ function renderCode(node: Code, width: number): string[] {
   ];
 }
 
+function applyColor(color: string, text: string): string {
+  return color.startsWith('#') ? chalk.hex(color)(text) : chalk[color](text);
+}
+
 function renderMermaidBlock(source: string, width: number): string[] {
   const innerWidth = Math.max(10, width - 2);
   const label = ' mermaid ';
@@ -306,7 +310,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
       topBorder,
       chalk.yellow.dim('  ⚠ Could not render diagram'),
       '',
-      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + chalk[T.mermaidDiagram].dim(l)),
+      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + applyColor(T.mermaidDiagram, l)),
       bottomBorder,
       '',
     ];
@@ -315,7 +319,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const diagramLines = ascii.split('\n');
   return [
     topBorder,
-    ...diagramLines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + chalk[T.mermaidDiagram](l)),
+    ...diagramLines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + applyColor(T.mermaidDiagram, l)),
     bottomBorder,
     '',
   ];
