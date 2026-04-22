@@ -10,8 +10,11 @@ Set Theme "Catppuccin Mocha"
 Hide
 Type "node dist/cli.js TEST.md"
 Enter
-# Give it plenty of time to boot and render in CI
-Sleep 15s
+# Give it a lot of time in slow CI
+Sleep 30s
+# Force a redraw
+Ctrl+L
+Sleep 2s
 Show
 
 # Capture the first page
