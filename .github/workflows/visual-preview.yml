@@ -42,30 +42,51 @@ jobs:
         env:
           FORCE_COLOR: 3
 
-      - name: Upload Main Screenshot
-        id: imgur_main
-        uses: devicons/public-upload-to-imgur@v2.2.2
-        with:
-          client_id: ${{ secrets.IMGUR_CLIENT_ID }}
-          path: tests/ui/screenshots/preview-main.png
+      - name: Upload Screenshots to Imgur
+        id: imgur
+        run: |
+          upload_image() {
+            local path=$1
+            for i in {1..3}; do
+              echo "Uploading $path (attempt $i)..."
+              RESPONSE=$(curl -s -X POST -H "Authorization: Client-ID ${{ secrets.IMGUR_CLIENT_ID }}" \
+                -F "image=@$path" \
+                https://api.imgur.com/3/upload)
+              
+              URL=$(echo $RESPONSE | jq -r '.data.link')
+              if [ "$URL" != "null" ] && [ -n "$URL" ]; then
+                echo "url=$URL"
+                return 0
+              fi
+              echo "Upload failed: $RESPONSE"
+              sleep 5
+            done
+            return 1
+          }
 
-      - name: Upload Scrolled Screenshot
-        id: imgur_scrolled
-        uses: devicons/public-upload-to-imgur@v2.2.2
-        with:
-          client_id: ${{ secrets.IMGUR_CLIENT_ID }}
-          path: tests/ui/screenshots/preview-scrolled.png
+          MAIN_URL=$(upload_image "tests/ui/screenshots/preview-main.png")
+          echo "main_url=${MAIN_URL#url=}" >> $GITHUB_OUTPUT
+          
+          sleep 2 # Avoid rapid fire
+          
+          SCROLLED_URL=$(upload_image "tests/ui/screenshots/preview-scrolled.png")
+          echo "scrolled_url=${SCROLLED_URL#url=}" >> $GITHUB_OUTPUT
 
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
-            const mainImg = JSON.parse(process.env.MAIN_IMG)[0];
-            const scrolledImg = JSON.parse(process.env.SCROLLED_IMG)[0];
+            const mainImg = process.env.MAIN_URL;
+            const scrolledImg = process.env.SCROLLED_URL;
             
+            if (!mainImg || !scrolledImg) {
+              console.log("One or more images failed to upload.");
+              return;
+            }
+
             let body = "### 🎨 Visual Preview (mdwow)\n\n";
-            body += `#### Main View\n${mainImg}\n\n`;
-            body += `#### Scrolled View (Mermaid, Tables, etc.)\n${scrolledImg}\n\n`;
+            body += `#### Main View\n![Main View](${mainImg})\n\n`;
+            body += `#### Scrolled View (Mermaid, Tables, etc.)\n![Scrolled View](${scrolledImg})\n\n`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -74,5 +95,5 @@ jobs:
               body: body
             });
         env:
-          MAIN_IMG: ${{ steps.imgur_main.outputs.markdown_urls }}
-          SCROLLED_IMG: ${{ steps.imgur_scrolled.outputs.markdown_urls }}
+          MAIN_URL: ${{ steps.imgur.outputs.main_url }}
+          SCROLLED_URL: ${{ steps.imgur.outputs.scrolled_url }}
