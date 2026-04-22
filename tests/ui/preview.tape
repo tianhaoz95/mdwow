@@ -5,39 +5,41 @@ Set Width 1200
 Set Height 1000
 Set Padding 20
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 100ms
 
-# Start the app hiddenly
+# Hide the setup and the initial command
 Hide
 Type "node dist/cli.js TEST.md"
 Enter
-Sleep 25s
+# Give it a very long time to be safe in CI
+Sleep 30s
+# Fresh redraw
 Ctrl+L
 Sleep 2s
 Show
 
-# Smooth-ish scroll by repeating commands (Repeat is not a core VHS command)
-Down 5
+# Smooth scroll through the document
+# We send 'j' instead of 'Down' to be absolutely sure it's handled as input
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
-Down 5
+Type "jjjjj"
 Sleep 1s
 
-# Wait at the bottom
-Sleep 5s
+# Final long wait at the bottom to see everything
+Sleep 10s
 
-# Quit
+# Hide the exit
 Hide
 Type "q"
 Sleep 2s
