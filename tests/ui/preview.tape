@@ -6,24 +6,28 @@ Set Height 1000
 Set Padding 20
 Set Theme "Catppuccin Mocha"
 
-# Hide the command typing
-Hide
-Type "node dist/cli.js TEST.md"
-Enter
-# Give it a lot of time in slow CI
-Sleep 30s
-# Force a redraw
-Ctrl+L
+# Initial wait for shell
 Sleep 2s
-Show
+
+# Type and enter with extra care
+Type "node dist/cli.js TEST.md"
+Sleep 1s
+Enter
+Sleep 1s
+# Sometimes CI needs a second kick or just more time
+Enter
+
+# Give it a long time to render
+Sleep 30s
 
 # Capture the first page
 Screenshot tests/ui/screenshots/preview-main.png
 
-# Scroll down a bit to show more content (Mermaid, etc.)
-Type "jjjjjjjjjjjjjjjjjjjj"
+# Scroll down
+Down 20
 Sleep 5s
 Screenshot tests/ui/screenshots/preview-scrolled.png
 
 # Quit
 Type "q"
+Sleep 2s
