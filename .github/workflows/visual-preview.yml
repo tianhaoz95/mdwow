@@ -1,0 +1,72 @@
+name: Visual Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  visual-preview:
+    name: Generate Visual Preview
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build mdwow
+        run: npm run build
+
+      - name: Install VHS
+        run: |
+          # Install vhs and its dependencies
+          # We use the binary for speed
+          curl -sS https://webinstall.dev/vhs | bash
+          # Add to PATH (webinstall installs to ~/.local/bin)
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
+          # VHS requires ttyd and ffmpeg for recording (even for screenshots often)
+          sudo apt-get update && sudo apt-get install -y ttyd ffmpeg
+
+      - name: Create screenshots directory
+        run: mkdir -p tests/ui/screenshots
+
+      - name: Generate Screenshots with VHS
+        run: |
+          vhs tests/ui/preview.tape
+        env:
+          FORCE_COLOR: 3
+
+      - name: Upload to Imgur
+        id: imgur
+        uses: devops-infra/action-imgur@master
+        with:
+          client_id: ${{ secrets.IMGUR_CLIENT_ID }}
+          path: tests/ui/screenshots/*.png
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const results = JSON.parse(process.env.IMGUR_JSON);
+            let body = "## 🎨 Visual Preview (mdwow)\n\nReview the visual changes below:\n\n";
+            for (const key in results) {
+              body += `### ${key}\n![${key}](${results[key]})\n\n`;
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            })
+        env:
+          IMGUR_JSON: ${{ steps.imgur.outputs.imgur_urls }}
