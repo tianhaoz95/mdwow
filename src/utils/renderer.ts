@@ -305,7 +305,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
       topBorder,
       chalk.yellow.dim('  ⚠ Could not render diagram'),
       '',
-      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + chalk.dim(l)),
+      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + chalk[T.mermaidDiagram].dim(l)),
       bottomBorder,
       '',
     ];
