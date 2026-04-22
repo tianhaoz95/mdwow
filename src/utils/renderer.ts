@@ -299,18 +299,22 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const topFill = '─'.repeat(Math.max(0, innerWidth - label.length));
   const topBorder = chalk[T.mermaidBorder].dim(`┌${topFill}${label}┐`);
   const bottomBorder = chalk[T.mermaidBorder].dim(`└${'─'.repeat(innerWidth)}┘`);
-  const reset = '\x1b[0m';
+  // Use a separate non-dim chalk call for the side border on content lines so
+  // the dim modifier doesn't leak into the diagram text via ansi-tokenize.
+  const sideBorder = applyColor(T.mermaidBorder, '│ ');
 
   let ascii: string;
   try {
     ascii = renderMermaidASCII(source);
+    // Strip any colors from the library output so our theme color applies to everything (text, arrows, boxes)
+    ascii = stripAnsi(ascii);
   } catch (err) {
     const lines = source.split('\n');
     return [
       topBorder,
       chalk.yellow.dim('  ⚠ Could not render diagram'),
       '',
-      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + applyColor(T.mermaidDiagram, l)),
+      ...lines.map((l) => sideBorder + applyColor(T.mermaidDiagram, l)),
       bottomBorder,
       '',
     ];
@@ -319,7 +323,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const diagramLines = ascii.split('\n');
   return [
     topBorder,
-    ...diagramLines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + applyColor(T.mermaidDiagram, l)),
+    ...diagramLines.map((l) => sideBorder + applyColor(T.mermaidDiagram, l)),
     bottomBorder,
     '',
   ];

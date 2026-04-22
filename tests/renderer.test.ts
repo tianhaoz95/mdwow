@@ -330,6 +330,14 @@ console.log("hi");
     expect(j).toContain('┼');
   });
 
+  it('renders mermaid block with mermaid label', () => {
+    const md = '```mermaid\ngraph TD;\nA-->B;\n```';
+    const j = joined(md);
+    expect(j).toContain('mermaid');
+    expect(j).toContain('┌');
+    expect(j).toContain('└');
+  });
+
   it('empty document returns empty array', () => {
     expect(renderToLines(parseMarkdown(''), 80)).toHaveLength(0);
   });
