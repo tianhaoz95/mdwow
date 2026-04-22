@@ -1,0 +1,17 @@
+{
+  "name": "mdwow-docs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "cp ../asset/demo.gif public/demo.gif 2>/dev/null || true",
+    "prebuild": "cp ../asset/demo.gif public/demo.gif 2>/dev/null || true",
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "astro": "^4.16.18"
+  }
+}

@@ -1,0 +1,111 @@
+---
+const features = [
+  {
+    icon: '⟳',
+    title: 'Live file watching',
+    desc: 'Edit your Markdown in any editor and the preview updates instantly — no manual refresh.',
+  },
+  {
+    icon: '</>',
+    title: 'Syntax highlighting',
+    desc: 'Fenced code blocks are highlighted for 200+ languages via cli-highlight.',
+  },
+  {
+    icon: '◈',
+    title: 'Mermaid diagrams',
+    desc: 'Flowcharts, sequence diagrams, ER diagrams, and more rendered as inline ASCII art.',
+  },
+  {
+    icon: '≡',
+    title: 'Table of contents',
+    desc: 'Press b to open a sidebar TOC and jump to any heading instantly.',
+  },
+  {
+    icon: '⊕',
+    title: 'Clickable links',
+    desc: 'Hover or click a link to pin its URL in the status bar for terminal handling.',
+  },
+  {
+    icon: '↕',
+    title: 'Mouse scroll',
+    desc: 'Scroll with your trackpad or mouse wheel using SGR mouse reporting.',
+  },
+  {
+    icon: '↔',
+    title: 'Reading width',
+    desc: 'Adjust the content column width with + and - to suit your screen.',
+  },
+  {
+    icon: '✓',
+    title: 'Full GFM support',
+    desc: 'Tables, strikethrough, task lists, and all GitHub Flavored Markdown extensions.',
+  },
+  {
+    icon: 'vim',
+    title: 'Keyboard navigation',
+    desc: 'Vim-style keys throughout: j/k to scroll, g/G for top/bottom, u/d for pages.',
+  },
+  {
+    icon: '◎',
+    title: 'Zero config',
+    desc: 'Works out of the box. No config file, no setup. Just point it at a file.',
+  },
+];
+---
+<section id="features">
+  <p class="section-label">// features</p>
+  <h2 class="section-title">Everything you need in a Markdown viewer.</h2>
+  <p class="section-desc">Built for developers who live in the terminal.</p>
+
+  <div class="grid">
+    {features.map((f) => (
+      <div class="card">
+        <span class="icon">{f.icon}</span>
+        <h3>{f.title}</h3>
+        <p>{f.desc}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .card {
+    background: var(--bg-card);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: background 0.15s;
+  }
+
+  .card:hover {
+    background: #181818;
+  }
+
+  .icon {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+
+  h3 {
+    font-size: 0.95rem;
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  p {
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+</style>

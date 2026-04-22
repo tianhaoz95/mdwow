@@ -1,0 +1,42 @@
+---
+const stack = [
+  { tool: 'Ink',              url: 'https://github.com/vadimdemedes/ink',          purpose: 'React-based TUI framework' },
+  { tool: 'React',            url: 'https://react.dev',                             purpose: 'Component model' },
+  { tool: 'unified + remark', url: 'https://unifiedjs.com',                         purpose: 'Markdown parsing' },
+  { tool: 'remark-gfm',       url: 'https://github.com/remarkjs/remark-gfm',        purpose: 'GFM support (tables, strikethrough)' },
+  { tool: 'chokidar',         url: 'https://github.com/paulmillr/chokidar',         purpose: 'Cross-platform file watching' },
+  { tool: 'cli-highlight',    url: 'https://github.com/felixfbecker/cli-highlight',  purpose: 'Terminal syntax highlighting' },
+  { tool: 'beautiful-mermaid',url: 'https://github.com/lukilabs/beautiful-mermaid', purpose: 'Mermaid → ASCII art' },
+  { tool: 'meow',             url: 'https://github.com/sindresorhus/meow',          purpose: 'CLI argument parsing' },
+  { tool: 'TypeScript',       url: 'https://www.typescriptlang.org',                purpose: 'Type safety (strict mode)' },
+  { tool: 'esbuild',          url: 'https://esbuild.github.io',                     purpose: 'Fast bundling' },
+  { tool: 'Vitest',           url: 'https://vitest.dev',                            purpose: 'Testing (344 tests)' },
+];
+---
+<section id="stack">
+  <p class="section-label">// tech stack</p>
+  <h2 class="section-title">Built on great open source.</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tool</th>
+        <th>Purpose</th>
+      </tr>
+    </thead>
+    <tbody>
+      {stack.map((s) => (
+        <tr>
+          <td><a href={s.url} target="_blank" rel="noopener">{s.tool}</a></td>
+          <td>{s.purpose}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</section>
+
+<style>
+  table {
+    max-width: 700px;
+  }
+</style>

@@ -1,0 +1,119 @@
+---
+const mainKeys = [
+  { key: '↑ / k',        action: 'Scroll up one line' },
+  { key: '↓ / j',        action: 'Scroll down one line' },
+  { key: 'u / PgUp',     action: 'Page up' },
+  { key: 'd / PgDn',     action: 'Page down' },
+  { key: 'g',            action: 'Jump to top' },
+  { key: 'G',            action: 'Jump to bottom' },
+  { key: 'b',            action: 'Toggle table of contents sidebar' },
+  { key: '+',            action: 'Widen content column' },
+  { key: '-',            action: 'Narrow content column' },
+  { key: '0',            action: 'Reset content width' },
+  { key: 't',            action: 'Toggle dark / light theme' },
+  { key: 'q / Ctrl+C',   action: 'Quit' },
+];
+
+const tocKeys = [
+  { key: '↑ / k',   action: 'Move cursor up' },
+  { key: '↓ / j',   action: 'Move cursor down' },
+  { key: 'Enter',   action: 'Jump to heading' },
+  { key: 'b / Esc', action: 'Close sidebar' },
+];
+
+const mouseActions = [
+  { action: 'Scroll wheel',    effect: 'Scroll document' },
+  { action: 'Hover over link', effect: 'Pin URL in status bar' },
+  { action: 'Click link',      effect: 'Pin URL (use Cmd+click in terminal to open)' },
+];
+---
+<section id="keyboard">
+  <p class="section-label">// keyboard reference</p>
+  <h2 class="section-title">Keyboard shortcuts &amp; mouse.</h2>
+  <p class="section-desc">Vim-style navigation throughout.</p>
+
+  <div class="tables">
+    <div class="table-group">
+      <h3>Main navigation</h3>
+      <table>
+        <thead>
+          <tr><th>Key</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {mainKeys.map((r) => (
+            <tr>
+              <td><kbd>{r.key}</kbd></td>
+              <td>{r.action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="side-tables">
+      <div class="table-group">
+        <h3>TOC sidebar</h3>
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            {tocKeys.map((r) => (
+              <tr>
+                <td><kbd>{r.key}</kbd></td>
+                <td>{r.action}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-group">
+        <h3>Mouse</h3>
+        <table>
+          <thead>
+            <tr><th>Action</th><th>Effect</th></tr>
+          </thead>
+          <tbody>
+            {mouseActions.map((r) => (
+              <tr>
+                <td>{r.action}</td>
+                <td>{r.effect}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tables {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .side-tables {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .table-group h3 {
+    font-size: 0.8rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+
+  @media (max-width: 700px) {
+    .tables {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

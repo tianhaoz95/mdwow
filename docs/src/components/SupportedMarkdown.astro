@@ -1,0 +1,75 @@
+---
+const elements = [
+  { name: 'Headings H1–H6',       note: 'each level has a distinct color' },
+  { name: 'Bold & italic',         note: '**bold**, *italic*' },
+  { name: 'Strikethrough',         note: '~~text~~ (GFM)' },
+  { name: 'Inline code',           note: '`code`' },
+  { name: 'Fenced code blocks',    note: 'syntax highlighted, language label' },
+  { name: 'Mermaid diagrams',      note: 'rendered as Unicode ASCII art' },
+  { name: 'Blockquotes',           note: 'colored left border, supports nesting' },
+  { name: 'Unordered lists',       note: 'nested, bullet •' },
+  { name: 'Ordered lists',         note: 'nested, numbered' },
+  { name: 'Task lists',            note: '- [x] checked (GFM)' },
+  { name: 'GFM tables',            note: 'aligned columns' },
+  { name: 'Horizontal rules',      note: '---' },
+  { name: 'Links',                 note: 'URL shown on hover/click' },
+  { name: 'Images',                note: 'shown as [image: alt text]' },
+];
+---
+<section id="markdown">
+  <p class="section-label">// supported markdown</p>
+  <h2 class="section-title">Full GitHub Flavored Markdown.</h2>
+  <p class="section-desc">Everything you write in GitHub renders beautifully in your terminal.</p>
+
+  <ul class="elements">
+    {elements.map((el) => (
+      <li>
+        <span class="check">✓</span>
+        <span class="el-name">{el.name}</span>
+        <span class="el-note">— {el.note}</span>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .elements {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0;
+    border: 1px solid var(--border);
+  }
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+  }
+
+  li:nth-child(odd) {
+    background: var(--bg-card);
+  }
+
+  li:last-child, li:nth-last-child(2):nth-child(odd) {
+    border-bottom: none;
+  }
+
+  .check {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .el-name {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  .el-note {
+    color: var(--fg-muted);
+    font-size: 0.8rem;
+  }
+</style>

@@ -1,0 +1,125 @@
+---
+const base = import.meta.env.BASE_URL;
+---
+<section id="getting-started">
+  <p class="section-label">// getting started</p>
+  <h2 class="section-title">Up and running in seconds.</h2>
+  <p class="section-desc">No installation required to try it out.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-content">
+        <h3>Run without installing</h3>
+        <p>Use <code>npx</code> to run mdwow directly — no global install needed.</p>
+        <div class="term-block">
+          <span class="prompt">$</span> npx mdwow-cli README.md
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-content">
+        <h3>Or install globally</h3>
+        <p>Install once, use everywhere as the <code>mdwow</code> command.</p>
+        <div class="term-block">
+          <span class="prompt">$</span> npm install -g mdwow-cli<br />
+          <span class="prompt">$</span> mdwow README.md
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-content">
+        <h3>Point it at any Markdown file</h3>
+        <p>Works with any <code>.md</code> file — local docs, notes, or project READMEs.</p>
+        <div class="term-block">
+          <span class="prompt">$</span> mdwow docs/guide.md<br />
+          <span class="prompt">$</span> mdwow ~/notes/todo.md<br />
+          <span class="prompt">$</span> mdwow CHANGELOG.md
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prereq">
+    <span class="prompt">#</span> Requires Node.js 18 or later
+  </div>
+
+  <div class="dev-cta">
+    <p>Building or contributing to mdwow?</p>
+    <a href={`${base}dev`} class="btn">View Developer Guide →</a>
+  </div>
+</section>
+
+<style>
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .step-num {
+    font-size: 1.5rem;
+    color: var(--border);
+    font-weight: 700;
+    line-height: 1;
+    padding-top: 0.1rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+    color: var(--fg);
+    margin-bottom: 0.4rem;
+  }
+
+  .step-content > p {
+    font-size: 0.875rem;
+    color: var(--fg-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .prereq {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    margin-bottom: 2rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+
+  .prereq .prompt {
+    color: var(--fg-muted);
+    margin-right: 0.5rem;
+  }
+
+  .dev-cta {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+
+  .dev-cta p {
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 600px) {
+    .step { grid-template-columns: 2rem 1fr; gap: 1rem; }
+    .step-num { font-size: 1.1rem; }
+    .dev-cta { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  }
+</style>

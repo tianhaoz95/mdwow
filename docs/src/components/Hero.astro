@@ -1,0 +1,231 @@
+---
+const base = import.meta.env.BASE_URL;
+---
+<section class="hero">
+  <div class="hero-text">
+    <p class="tagline"><span class="prompt">&gt;</span> mdwow</p>
+    <h1>Live Markdown<br />in your terminal.</h1>
+    <p class="sub">
+      Open any <code>.md</code> file and get a rich, colorful preview
+      that <span class="hl">auto-updates</span> whenever the file changes.
+      Zero config. Instant.
+    </p>
+    <div class="cta-group">
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <span class="cmd-text" id="npx-cmd">npx mdwow-cli README.md</span>
+        <button class="copy-btn" data-target="npx-cmd" title="Copy command">copy</button>
+      </div>
+      <div class="cmd-block secondary">
+        <span class="prompt">$</span>
+        <span class="cmd-text" id="install-cmd">npm install -g mdwow-cli</span>
+        <button class="copy-btn" data-target="install-cmd" title="Copy command">copy</button>
+      </div>
+    </div>
+    <div class="badges">
+      <a href="https://www.npmjs.com/package/mdwow-cli" target="_blank" rel="noopener">
+        <img src="https://img.shields.io/npm/v/mdwow-cli?color=00ff41&labelColor=0d0d0d&logo=npm&logoColor=00ff41" alt="npm version" />
+      </a>
+      <a href="https://github.com/tianhaoz95/mdwow" target="_blank" rel="noopener">
+        <img src="https://img.shields.io/github/stars/tianhaoz95/mdwow?style=flat&color=ffb300&labelColor=0d0d0d&logo=github&logoColor=ffb300" alt="GitHub stars" />
+      </a>
+      <a href="https://github.com/tianhaoz95/mdwow/blob/main/LICENSE" target="_blank" rel="noopener">
+        <img src="https://img.shields.io/badge/license-MIT-6a6a6a?labelColor=0d0d0d" alt="MIT License" />
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-demo">
+    <div class="demo-frame">
+      <div class="demo-titlebar">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+        <span class="demo-title">mdwow — README.md</span>
+      </div>
+      <div class="demo-body">
+        <img src={`${base}demo.gif`} alt="mdwow live demo" loading="lazy" />
+        <div class="scanlines" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target;
+      if (!target) return;
+      const el = document.getElementById(target);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent ?? '').then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'copied!';
+        btn.style.color = 'var(--accent)';
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.style.color = '';
+        }, 1500);
+      });
+    });
+  });
+</script>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    padding: 4rem 0 3rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tagline {
+    font-size: 0.85rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+
+  .prompt {
+    color: var(--accent);
+    margin-right: 0.25rem;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+    margin-bottom: 1.25rem;
+    color: var(--fg);
+  }
+
+  .sub {
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    max-width: 480px;
+  }
+
+  .hl {
+    color: var(--accent);
+  }
+
+  .cta-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .cmd-block {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .cmd-block.secondary {
+    border-left-color: var(--border);
+    opacity: 0.7;
+  }
+
+  .cmd-text {
+    flex: 1;
+    color: var(--fg);
+  }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .copy-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .badges img {
+    height: 20px;
+  }
+
+  /* Demo frame */
+  .demo-frame {
+    border: 1px solid var(--border);
+    background: #0a0a0a;
+    overflow: hidden;
+  }
+
+  .demo-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    background: #1a1a1a;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .dot.red    { background: #ff5f57; }
+  .dot.yellow { background: #ffbd2e; }
+  .dot.green  { background: #28c840; }
+
+  .demo-title {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-left: 0.5rem;
+  }
+
+  .demo-body {
+    position: relative;
+    line-height: 0;
+  }
+
+  .demo-body img {
+    width: 100%;
+    display: block;
+  }
+
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.04) 2px,
+      rgba(0, 0, 0, 0.04) 4px
+    );
+    pointer-events: none;
+  }
+
+  @media (max-width: 800px) {
+    .hero {
+      grid-template-columns: 1fr;
+      padding: 2.5rem 0 2rem;
+    }
+    .hero-demo {
+      order: -1;
+    }
+  }
+</style>

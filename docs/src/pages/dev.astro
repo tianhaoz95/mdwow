@@ -1,0 +1,408 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const base = import.meta.env.BASE_URL;
+---
+<BaseLayout
+  title="Developer Guide — mdwow"
+  description="How to build, run, test, and contribute to mdwow — the terminal Markdown viewer."
+>
+  <div class="dev-page">
+    <div class="breadcrumb">
+      <a href={base}>← back to landing</a>
+    </div>
+
+    <header class="page-header">
+      <p class="section-label">// developer guide</p>
+      <h1>&gt; mdwow — developer guide</h1>
+      <p class="sub">Everything you need to build, run, test, and contribute to mdwow.</p>
+    </header>
+
+    <!-- Project Structure -->
+    <section>
+      <h2><span class="prompt">#</span> Project structure</h2>
+      <pre class="term-block tree"><code>mdwow/
+├── src/
+│   ├── cli.tsx                    <span class="c"># Entry point, arg parsing, mouse cleanup</span>
+│   ├── app.tsx                    <span class="c"># Root component, input handling, layout</span>
+│   ├── theme.ts / themes.ts       <span class="c"># Color/style constants (dark + light)</span>
+│   ├── cjs-shim.ts                <span class="c"># CommonJS compatibility shim</span>
+│   ├── hooks/
+│   │   ├── useFileWatcher.ts      <span class="c"># chokidar live-reload hook</span>
+│   │   ├── useMouseScroll.ts      <span class="c"># SGR mouse reporting lifecycle</span>
+│   │   ├── useToc.ts              <span class="c"># TOC sidebar cursor/active state</span>
+│   │   └── useFloatingPreview.ts  <span class="c"># Floating preview modal state</span>
+│   ├── utils/
+│   │   ├── parser.ts              <span class="c"># remark Markdown → AST</span>
+│   │   ├── renderer.ts            <span class="c"># AST → ANSI string lines + link spans + TOC</span>
+│   │   ├── mouse.ts               <span class="c"># SGR mouse escape sequence parser</span>
+│   │   └── openUrl.ts             <span class="c"># Cross-platform URL opener</span>
+│   └── components/
+│       ├── Header.tsx             <span class="c"># Top bar (filename, live indicator, timestamp)</span>
+│       ├── StatusBar.tsx          <span class="c"># Bottom bar (hints, scroll %, link URL)</span>
+│       ├── Sidebar.tsx            <span class="c"># TOC sidebar</span>
+│       ├── FloatingPreview.tsx    <span class="c"># Floating linked-file preview</span>
+│       ├── MarkdownRenderer.tsx   <span class="c"># Dispatches AST nodes to components</span>
+│       ├── ErrorView.tsx          <span class="c"># Error display</span>
+│       └── nodes/                 <span class="c"># Ink components per Markdown node type</span>
+│           ├── Heading.tsx
+│           ├── Paragraph.tsx
+│           ├── InlineContent.tsx
+│           ├── CodeBlock.tsx
+│           ├── Blockquote.tsx
+│           ├── List.tsx
+│           ├── Table.tsx
+│           └── HorizontalRule.tsx
+├── tests/
+│   ├── parser.test.ts
+│   ├── renderer.test.ts
+│   ├── mouse.test.ts
+│   ├── toc.test.ts
+│   ├── links.test.ts
+│   ├── theme.test.ts
+│   ├── useScrolling.test.ts
+│   ├── ui/                        <span class="c"># Visual output tests (ink-testing-library)</span>
+│   └── components/                <span class="c"># Component unit tests</span>
+├── docs/                          <span class="c"># This Astro documentation site</span>
+├── asset/demo.gif                 <span class="c"># Demo GIF</span>
+├── design/                        <span class="c"># Design docs and implementation plan</span>
+├── build.mjs                      <span class="c"># esbuild bundler config</span>
+├── tsconfig.json
+├── vitest.config.ts
+└── package.json</code></pre>
+    </section>
+
+    <!-- Architecture -->
+    <section>
+      <h2><span class="prompt">#</span> Architecture</h2>
+      <p>mdwow uses a <strong>split rendering model</strong>:</p>
+
+      <div class="arch-grid">
+        <div class="arch-card">
+          <h3><span class="accent">1.</span> Pure string renderer</h3>
+          <p>
+            <code>src/utils/renderer.ts</code> converts a Markdown AST into an array of
+            ANSI-colored strings (one per line). Scrolling is instant — just slice the array.
+            This function also tracks link positions for mouse click detection and builds the
+            Table of Contents.
+          </p>
+        </div>
+        <div class="arch-card">
+          <h3><span class="accent">2.</span> Ink / React UI chrome</h3>
+          <p>
+            <code>src/app.tsx</code> and <code>src/components/</code> handle the interactive
+            shell: header, status bar, sidebar TOC, and floating preview. The rendered string
+            lines are passed as props and displayed via Ink's <code>&lt;Text&gt;</code>.
+          </p>
+        </div>
+      </div>
+
+      <h3 class="flow-title">Data flow</h3>
+      <pre class="term-block"><code>File on disk
+  → chokidar (useFileWatcher)       <span class="c"># watches for changes</span>
+  → parseMarkdown (unified/remark)  <span class="c"># produces MDAST AST</span>
+  → renderToLinesWithLinks()        <span class="c"># ANSI string lines[] + link metadata + TOC</span>
+  → sliced by scroll offset
+  → Ink renders to terminal</code></pre>
+    </section>
+
+    <!-- Prerequisites -->
+    <section>
+      <h2><span class="prompt">#</span> Prerequisites</h2>
+      <div class="term-block">
+        <div><span class="prompt">$</span> node --version   <span class="c"># requires Node.js 18 or later</span></div>
+        <div><span class="prompt">$</span> npm --version    <span class="c"># requires npm 9 or later</span></div>
+      </div>
+    </section>
+
+    <!-- How to run -->
+    <section>
+      <h2><span class="prompt">#</span> Setup &amp; running</h2>
+
+      <h3>Clone and install</h3>
+      <div class="term-block">
+        <div><span class="prompt">$</span> git clone https://github.com/tianhaoz95/mdwow.git</div>
+        <div><span class="prompt">$</span> cd mdwow</div>
+        <div><span class="prompt">$</span> npm install</div>
+      </div>
+
+      <h3>Dev mode (no build step)</h3>
+      <p>Uses <code>tsx</code> to run TypeScript directly — fastest iteration loop.</p>
+      <div class="term-block">
+        <div><span class="prompt">$</span> npm run dev -- README.md</div>
+      </div>
+
+      <h3>Build</h3>
+      <p>Bundles everything to <code>dist/cli.js</code> via esbuild.</p>
+      <div class="term-block">
+        <div><span class="prompt">$</span> npm run build</div>
+      </div>
+
+      <h3>Preview with test document</h3>
+      <p>Builds and opens <code>TEST.md</code>, which exercises every supported Markdown element.</p>
+      <div class="term-block">
+        <div><span class="prompt">$</span> npm run preview</div>
+      </div>
+    </section>
+
+    <!-- How to test -->
+    <section>
+      <h2><span class="prompt">#</span> Testing</h2>
+
+      <div class="term-block">
+        <div><span class="prompt">$</span> npm test               <span class="c"># run all 344 tests once</span></div>
+        <div><span class="prompt">$</span> npm run test:watch      <span class="c"># watch mode</span></div>
+        <div>&nbsp;</div>
+        <div><span class="prompt">$</span> npx vitest run tests/renderer.test.ts  <span class="c"># single file</span></div>
+      </div>
+
+      <h3>Test coverage</h3>
+      <table>
+        <thead><tr><th>File</th><th>What it covers</th></tr></thead>
+        <tbody>
+          <tr><td><code>tests/parser.test.ts</code></td><td>Markdown AST parsing</td></tr>
+          <tr><td><code>tests/renderer.test.ts</code></td><td>ANSI string rendering</td></tr>
+          <tr><td><code>tests/mouse.test.ts</code></td><td>SGR mouse escape parsing</td></tr>
+          <tr><td><code>tests/toc.test.ts</code></td><td>TOC extraction and cursor state</td></tr>
+          <tr><td><code>tests/links.test.ts</code></td><td>Link position detection</td></tr>
+          <tr><td><code>tests/theme.test.ts</code></td><td>Theme constants and color values</td></tr>
+          <tr><td><code>tests/useScrolling.test.ts</code></td><td>Scroll hook behavior</td></tr>
+          <tr><td><code>tests/ui/</code></td><td>Visual output tests (ink-testing-library)</td></tr>
+          <tr><td><code>tests/components/</code></td><td>Ink component unit tests</td></tr>
+        </tbody>
+      </table>
+
+      <p class="note">
+        No linter is configured. TypeScript strict mode is the primary type-safety guardrail.
+      </p>
+    </section>
+
+    <!-- Docs site -->
+    <section>
+      <h2><span class="prompt">#</span> Running the docs site</h2>
+      <p>The docs site lives in <code>docs/</code> and is a separate Astro project.</p>
+      <div class="term-block">
+        <div><span class="prompt">$</span> npm run docs:dev      <span class="c"># start dev server at localhost:4321</span></div>
+        <div><span class="prompt">$</span> npm run docs:build    <span class="c"># build static site to docs/dist/</span></div>
+        <div><span class="prompt">$</span> npm run docs:preview  <span class="c"># preview built site locally</span></div>
+      </div>
+      <p class="note">
+        The demo GIF is copied automatically from <code>asset/demo.gif</code> before dev/build
+        via <code>predev</code>/<code>prebuild</code> scripts in <code>docs/package.json</code>.
+      </p>
+    </section>
+
+    <!-- Contributing -->
+    <section>
+      <h2><span class="prompt">#</span> Contributing</h2>
+
+      <ol class="steps-list">
+        <li>Fork the repository and create a feature branch.</li>
+        <li>
+          Make your changes. For new Markdown node types:
+          <ul>
+            <li>Add a component in <code>src/components/nodes/</code></li>
+            <li>Wire it in <code>src/utils/renderer.ts</code></li>
+            <li>Add tests in <code>tests/components/</code></li>
+          </ul>
+        </li>
+        <li>Run <code>npm test</code> — all tests must pass before submitting.</li>
+        <li>Open a pull request against <code>main</code>.</li>
+      </ol>
+
+      <div class="tip">
+        <span class="prompt">!</span>
+        The CI pipeline runs <code>npm test</code> on every push to <code>main</code>.
+        The release workflow auto-publishes to npm when the <code>package.json</code> version changes.
+      </div>
+    </section>
+
+    <!-- CI/CD -->
+    <section>
+      <h2><span class="prompt">#</span> CI / CD</h2>
+      <table>
+        <thead><tr><th>Workflow</th><th>Trigger</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>.github/workflows/release.yml</code></td>
+            <td>Push to <code>main</code> with version change</td>
+            <td>Runs tests, builds, publishes to npm via OIDC, creates GitHub release + tag</td>
+          </tr>
+          <tr>
+            <td><code>.github/workflows/docs.yml</code></td>
+            <td>Push to <code>main</code> touching <code>docs/**</code> or <code>asset/demo.gif</code></td>
+            <td>Builds Astro site, deploys to <code>gh-pages</code> branch → GitHub Pages</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="back-link">
+      <a href={base} class="btn">← Back to landing page</a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .dev-page {
+    padding: 2rem 0 4rem;
+    max-width: 820px;
+  }
+
+  .breadcrumb {
+    margin-bottom: 2rem;
+    font-size: 0.85rem;
+  }
+
+  .breadcrumb a {
+    color: var(--fg-muted);
+  }
+
+  .breadcrumb a:hover {
+    color: var(--accent);
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header h1 {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header .sub {
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+  }
+
+  section {
+    padding: 2.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  section:last-of-type {
+    border-bottom: none;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    color: var(--fg);
+    margin-bottom: 1.25rem;
+  }
+
+  h3 {
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin: 1.25rem 0 0.5rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  .flow-title {
+    margin-top: 1.5rem;
+  }
+
+  p {
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+
+  .prompt {
+    color: var(--accent);
+    margin-right: 0.35rem;
+  }
+
+  .accent {
+    color: var(--accent);
+  }
+
+  .c {
+    color: var(--fg-muted);
+  }
+
+  .term-block {
+    margin: 0.75rem 0 1rem;
+    line-height: 1.8;
+  }
+
+  .term-block > div {
+    white-space: nowrap;
+  }
+
+  .tree {
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin: 1rem 0 1.5rem;
+  }
+
+  .arch-card {
+    background: var(--bg-card);
+    padding: 1.25rem;
+  }
+
+  .arch-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.6rem;
+    font-size: 0.875rem;
+  }
+
+  .arch-card p {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .steps-list {
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+    line-height: 2;
+    padding-left: 1.5rem;
+  }
+
+  .steps-list li {
+    margin-bottom: 0.5rem;
+  }
+
+  .steps-list ul {
+    padding-left: 1.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .tip {
+    margin-top: 1.25rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+  }
+
+  .note {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    border-left: 2px solid var(--border);
+    padding-left: 0.75rem;
+  }
+
+  .back-link {
+    margin-top: 3rem;
+  }
+
+  @media (max-width: 600px) {
+    .arch-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,47 @@
+---
+const year = new Date().getFullYear();
+---
+<footer>
+  <div class="inner">
+    <span class="prompt">&gt;</span>
+    <span>MIT License &copy; {year} <a href="https://github.com/tianhaoz95" target="_blank" rel="noopener">tianhaoz95</a></span>
+    <span class="sep">·</span>
+    <a href="https://github.com/tianhaoz95/mdwow" target="_blank" rel="noopener">github.com/tianhaoz95/mdwow</a>
+    <span class="sep">·</span>
+    <span>Built with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a></span>
+  </div>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    margin-top: 4rem;
+  }
+
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+  }
+
+  .prompt {
+    color: var(--accent);
+  }
+
+  .sep {
+    color: var(--border);
+  }
+
+  a {
+    color: var(--fg-muted);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--accent);
+  }
+</style>

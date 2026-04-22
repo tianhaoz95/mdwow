@@ -1,0 +1,213 @@
+---
+import NavBar from '../components/NavBar.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'mdwow — live Markdown viewer for the terminal',
+  description = 'A beautiful, live Markdown viewer for the terminal. Open any .md file and get a rich, colorful TUI preview that auto-updates whenever the file changes on disk.',
+} = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <NavBar />
+    <main>
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>
+
+<style is:global>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --bg:           #0d0d0d;
+    --bg-card:      #141414;
+    --bg-code:      #111111;
+    --fg:           #c8c8c8;
+    --fg-muted:     #6a6a6a;
+    --accent:       #00ff41;
+    --accent-dim:   #00cc33;
+    --amber:        #ffb300;
+    --border:       #2a2a2a;
+    --border-accent: rgba(0, 255, 65, 0.2);
+    --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  h1, h2, h3, h4 {
+    color: var(--fg);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .section-label {
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .section-title {
+    font-size: 1.6rem;
+    color: var(--fg);
+    margin-bottom: 0.75rem;
+  }
+
+  .section-desc {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    max-width: 600px;
+    margin-bottom: 2.5rem;
+  }
+
+  section {
+    padding: 4rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  section:last-of-type {
+    border-bottom: none;
+  }
+
+  /* Terminal-style code blocks */
+  .term-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--fg);
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .term-block .prompt {
+    color: var(--accent);
+    user-select: none;
+    margin-right: 0.5rem;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-block;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+    padding: 0.6rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+  }
+
+  .btn-amber {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .btn-amber:hover {
+    background: var(--amber);
+    color: var(--bg);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  th {
+    text-align: left;
+    color: var(--accent);
+    border-bottom: 1px solid var(--accent-dim);
+    padding: 0.5rem 1rem 0.5rem 0;
+    font-weight: 500;
+  }
+
+  td {
+    padding: 0.45rem 1rem 0.45rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg);
+    vertical-align: top;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  kbd {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 0.1rem 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--amber);
+  }
+
+  code {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    padding: 0.1rem 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--accent);
+  }
+</style>
