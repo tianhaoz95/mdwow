@@ -69,7 +69,7 @@ export const darkRendererTheme: RendererTheme = {
   codeText:       'greenBright',
 
   mermaidBorder:  'magenta',
-  mermaidDiagram: 'cyanBright',
+  mermaidDiagram: 'whiteBright',
 
   blockquoteBorder: 'magentaBright',
 

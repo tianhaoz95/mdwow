@@ -295,6 +295,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const topFill = '─'.repeat(Math.max(0, innerWidth - label.length));
   const topBorder = chalk[T.mermaidBorder].dim(`┌${topFill}${label}┐`);
   const bottomBorder = chalk[T.mermaidBorder].dim(`└${'─'.repeat(innerWidth)}┘`);
+  const reset = '\x1b[0m';
 
   let ascii: string;
   try {
@@ -305,7 +306,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
       topBorder,
       chalk.yellow.dim('  ⚠ Could not render diagram'),
       '',
-      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + chalk[T.mermaidDiagram].dim(l)),
+      ...lines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + chalk[T.mermaidDiagram].dim(l)),
       bottomBorder,
       '',
     ];
@@ -314,7 +315,7 @@ function renderMermaidBlock(source: string, width: number): string[] {
   const diagramLines = ascii.split('\n');
   return [
     topBorder,
-    ...diagramLines.map((l) => chalk[T.mermaidBorder].dim('│ ') + chalk[T.mermaidDiagram](l)),
+    ...diagramLines.map((l) => chalk[T.mermaidBorder].dim('│ ') + reset + chalk[T.mermaidDiagram](l)),
     bottomBorder,
     '',
   ];
