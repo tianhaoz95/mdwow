@@ -5,41 +5,39 @@ Set Width 1200
 Set Height 1000
 Set Padding 20
 Set Theme "Catppuccin Mocha"
+Set TypingSpeed 100ms
 
-# Hide the setup and the initial command
-Hide
+# Start the app
 Type "node dist/cli.js TEST.md"
 Enter
-# Give it a very long time to be safe in CI
-Sleep 30s
-# Fresh redraw
-Ctrl+L
-Sleep 2s
-Show
 
-# Smooth scroll through the document
-# We send 'j' instead of 'Down' to be absolutely sure it's handled as input
-Type "jjjjj"
+# Wait for the header to appear (max 60s)
+Wait@60s "mdwow"
+
+# Give it a bit more to be sure AST is parsed and rendered
+Sleep 5s
+
+# Smooth-ish scroll
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
-Type "jjjjj"
+Down 5
 Sleep 1s
 
-# Final long wait at the bottom to see everything
-Sleep 10s
+# Wait at the bottom
+Sleep 5s
 
-# Hide the exit
-Hide
+# Quit
 Type "q"
 Sleep 2s
