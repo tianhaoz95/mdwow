@@ -27,6 +27,9 @@ jobs:
       - name: Build mdwow
         run: npm run build
 
+      - name: Verify Build
+        run: ls -R dist/
+
       - name: Install VHS and Dependencies
         run: |
           sudo mkdir -p /etc/apt/keyrings

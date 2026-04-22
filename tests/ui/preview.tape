@@ -7,17 +7,18 @@ Set Padding 20
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 100ms
 
-# Start the app
+# Start the app hiddenly to save GIF size/time
+Hide
 Type "node dist/cli.js TEST.md"
 Enter
-
-# Wait for the header to appear (max 60s)
-Wait@60s "mdwow"
-
-# Give it a bit more to be sure AST is parsed and rendered
+# CI is slow, give it a massive buffer
+Sleep 45s
+# Force redraw to ensure TUI is visible
+Ctrl+L
 Sleep 5s
+Show
 
-# Smooth-ish scroll
+# Smooth scroll through the document
 Down 5
 Sleep 1s
 Down 5
@@ -35,9 +36,10 @@ Sleep 1s
 Down 5
 Sleep 1s
 
-# Wait at the bottom
-Sleep 5s
+# Final long wait at the bottom to see everything
+Sleep 10s
 
-# Quit
+# Hide the exit
+Hide
 Type "q"
 Sleep 2s
