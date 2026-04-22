@@ -54,9 +54,20 @@ process.on('exit', () => {
 process.on('SIGINT', () => process.exit(0));
 process.on('SIGTERM', () => process.exit(0));
 
+// Ink requires raw mode for interactive input.
+// In non-TTY environments (like some CI pipes), we fall back to non-interactive mode.
+const isInteractive = process.stdin.isTTY;
+
 const { waitUntilExit } = render(<App filePath={resolved} />, {
-  exitOnCtrlC: false,
+  exitOnCtrlC: isInteractive,
+  patchConsole: true,
 });
+
+if (!isInteractive) {
+  // If not interactive, we just wait a bit for the initial render and exit
+  // This is useful for smoke tests or static captures.
+  setTimeout(() => process.exit(0), 5000);
+}
 
 waitUntilExit().then(() => {
   process.exit(0);
