@@ -34,8 +34,11 @@ jobs:
         run: |
           node -v
           npm -v
-          env
           ls -l TEST.md
+
+      - name: Smoke Test App
+        run: |
+          timeout 5s node dist/cli.js TEST.md || true
 
       - name: Install VHS and Dependencies
         run: |
@@ -49,7 +52,7 @@ jobs:
         run: mkdir -p tests/ui/screenshots
 
       - name: Generate Screenshots with VHS
-        run: vhs --debug tests/ui/preview.tape
+        run: vhs tests/ui/preview.tape
         env:
           FORCE_COLOR: 3
           TERM: xterm-256color
