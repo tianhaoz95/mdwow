@@ -333,25 +333,45 @@ function renderBlockquote(node: Blockquote, width: number, indent = 0): string[]
   const border = chalk[T.blockquoteBorder]('│ ');
   const out: string[] = [];
   for (const child of node.children) {
-    if (child.type === 'paragraph') {
-      const text = renderInlines((child as Paragraph).children as PhrasingContent[]);
-      const wrapped = wrapLine(text, width - 2 - indent);
-      for (const line of wrapped) {
-        out.push(' '.repeat(indent) + border + chalk.dim(line));
+    let childLines: string[] = [];
+    switch (child.type) {
+      case 'paragraph': {
+        const text = renderInlines((child as Paragraph).children as PhrasingContent[]);
+        childLines = [...wrapLine(text, width - 2 - indent), ''];
+        break;
       }
-    } else if (child.type === 'blockquote') {
-      const inner = renderBlockquote(child as Blockquote, width - 2, indent + 2);
-      for (const line of inner) {
+      case 'heading':
+        childLines = renderHeading(child as Heading, width - 2 - indent);
+        break;
+      case 'list':
+        childLines = renderListItems(child as List, width - 2 - indent);
+        break;
+      case 'blockquote':
+        childLines = renderBlockquote(child as Blockquote, width - 2, indent + 2);
+        break;
+      case 'code':
+        childLines = renderCode(child as Code, width - 2 - indent);
+        break;
+      case 'table':
+        childLines = renderTable(child as Table, width - 2 - indent);
+        break;
+      case 'thematicBreak':
+        childLines = renderHr(width - 2 - indent);
+        break;
+      default:
+        break;
+    }
+
+    for (const line of childLines) {
+      if (child.type === 'blockquote') {
         out.push(' '.repeat(indent) + border + line);
-      }
-    } else if (child.type === 'code') {
-      const codeLines = renderCode(child as Code, width - 2);
-      for (const line of codeLines) {
-        out.push(' '.repeat(indent) + border + chalk.dim(line));
+      } else {
+        // Only dim paragraphs to maintain readability for headings/code/etc.
+        const formatted = child.type === 'paragraph' ? chalk.dim(line) : line;
+        out.push(' '.repeat(indent) + border + formatted);
       }
     }
   }
-  out.push('');
   return out;
 }
 
@@ -366,18 +386,48 @@ function renderListItems(node: List, width: number, depth = 0): string[] {
       ? chalk[T.number](`${i + 1}.`)
       : chalk[T.bullet]('•');
 
-    for (const child of item.children) {
-      if (child.type === 'paragraph') {
-        const text = renderInlines((child as Paragraph).children as PhrasingContent[]);
-        const prefix = `${indent}${bullet} `;
-        const prefixLen = visibleLength(prefix);
-        const wrapped = wrapLine(text, width - prefixLen);
-        out.push(prefix + wrapped[0]);
-        for (const cont of wrapped.slice(1)) {
-          out.push(' '.repeat(prefixLen) + cont);
+    const prefix = `${indent}${bullet} `;
+    const prefixLen = visibleLength(prefix);
+    const spacer = ' '.repeat(prefixLen);
+
+    for (let ci = 0; ci < item.children.length; ci++) {
+      const child = item.children[ci]!;
+      let childLines: string[] = [];
+      const childWidth = width - prefixLen;
+      switch (child.type) {
+        case 'paragraph': {
+          const text = renderInlines((child as Paragraph).children as PhrasingContent[]);
+          childLines = wrapLine(text, childWidth);
+          break;
         }
-      } else if (child.type === 'list') {
-        out.push(...renderListItems(child as List, width, depth + 1));
+        case 'list':
+          childLines = renderListItems(child as List, width, depth + 1);
+          break;
+        case 'code':
+          childLines = renderCode(child as Code, childWidth);
+          break;
+        case 'blockquote':
+          childLines = renderBlockquote(child as Blockquote, childWidth);
+          break;
+        case 'heading':
+          childLines = renderHeading(child as Heading, childWidth);
+          break;
+        case 'table':
+          childLines = renderTable(child as Table, childWidth);
+          break;
+        case 'thematicBreak':
+          childLines = renderHr(childWidth);
+          break;
+        default:
+          break;
+      }
+
+      if (childLines.length > 0) {
+        const firstLinePrefix = ci === 0 ? prefix : spacer;
+        out.push(firstLinePrefix + childLines[0]);
+        for (const cont of childLines.slice(1)) {
+          out.push(spacer + cont);
+        }
       }
     }
   }
@@ -444,28 +494,61 @@ function collectBlockquoteLinks(
   out: LinkSpan[],
   indent = 0,
 ): void {
-  // Each paragraph in a blockquote renders as: '│ ' + text (prefix = 2 visible chars)
   const prefix = 2 + indent;
   let lineOffset = 0;
   for (const child of node.children) {
-    if (child.type === 'paragraph') {
-      const { text, spans } = renderInlinesTracked((child as Paragraph).children as PhrasingContent[]);
-      const wrapped = wrapLine(text, width - prefix);
-      for (const span of spans) {
-        out.push({
-          lineIndex: baseLineIndex + lineOffset,
-          colStart: prefix + span.colStart,
-          colEnd: prefix + span.colEnd,
-          url: span.url,
-        });
+    const childWidth = width - 2 - indent;
+    switch (child.type) {
+      case 'paragraph': {
+        const { text, spans } = renderInlinesTracked((child as Paragraph).children as PhrasingContent[]);
+        const plain = stripAnsi(text);
+        const remapped = remapSpansAfterWrap(plain, spans, childWidth, baseLineIndex + lineOffset);
+        for (const span of remapped) {
+          out.push({ ...span, colStart: span.colStart + prefix, colEnd: span.colEnd + prefix });
+        }
+        lineOffset += wrapLine(text, childWidth).length + 1;
+        break;
       }
-      lineOffset += wrapped.length;
-    } else if (child.type === 'blockquote') {
-      const innerLines = renderBlockquote(child as Blockquote, width - prefix).length;
-      collectBlockquoteLinks(child as Blockquote, baseLineIndex + lineOffset, width - prefix, out, indent + 2);
-      lineOffset += innerLines;
-    } else {
-      lineOffset += renderBlockquote({ type: 'blockquote', children: [child as BlockContent] }, width).length;
+      case 'heading': {
+        const h = child as Heading;
+        const { text, spans } = renderInlinesTracked(h.children as PhrasingContent[]);
+        const textOffset = h.depth === 1 ? 2 : 1;
+        for (const span of spans) {
+          out.push({
+            lineIndex: baseLineIndex + lineOffset + textOffset,
+            colStart: prefix + (h.depth === 1 ? 2 : (h.depth === 3 ? 2 : 0)) + span.colStart,
+            colEnd: prefix + (h.depth === 1 ? 2 : (h.depth === 3 ? 2 : 0)) + span.colEnd,
+            url: span.url,
+          });
+        }
+        lineOffset += renderHeading(h, childWidth).length;
+        break;
+      }
+      case 'blockquote': {
+        const bq = child as Blockquote;
+        const innerLines = renderBlockquote(bq, width - 2, indent + 2).length;
+        collectBlockquoteLinks(bq, baseLineIndex + lineOffset, width - 2, out, indent + 2);
+        lineOffset += innerLines;
+        break;
+      }
+      case 'list': {
+        const l = child as List;
+        const innerLines = renderListItems(l, childWidth).length;
+        collectListLinks(l, baseLineIndex + lineOffset, childWidth, out);
+        lineOffset += innerLines;
+        break;
+      }
+      case 'code':
+        lineOffset += renderCode(child as Code, childWidth).length;
+        break;
+      case 'table':
+        lineOffset += renderTable(child as Table, childWidth).length;
+        break;
+      case 'thematicBreak':
+        lineOffset += renderHr(childWidth).length;
+        break;
+      default:
+        break;
     }
   }
 }
@@ -484,25 +567,66 @@ function collectListLinks(
   for (let i = 0; i < node.children.length; i++) {
     const item = node.children[i] as ListItem;
     const bullet = ordered ? `${i + 1}.` : '•';
-    const prefixLen = visibleLength(`${indent}${bullet} `);
+    const prefix = `${indent}${bullet} `;
+    const prefixLen = visibleLength(prefix);
 
-    for (const child of item.children) {
-      if (child.type === 'paragraph') {
-        const { text, spans } = renderInlinesTracked((child as Paragraph).children as PhrasingContent[]);
-        const wrapped = wrapLine(text, width - prefixLen);
-        for (const span of spans) {
-          out.push({
-            lineIndex: baseLineIndex + lineOffset,
-            colStart: prefixLen + span.colStart,
-            colEnd: prefixLen + span.colEnd,
-            url: span.url,
-          });
+    for (let ci = 0; ci < item.children.length; ci++) {
+      const child = item.children[ci]!;
+      const childWidth = width - prefixLen;
+      // Link positions don't care about the bullet character itself,
+      // but they DO care about the visible length of the prefix.
+      // Every line of every child of a list item starts at prefixLen.
+      switch (child.type) {
+        case 'paragraph': {
+          const { text, spans } = renderInlinesTracked((child as Paragraph).children as PhrasingContent[]);
+          const plain = stripAnsi(text);
+          const remapped = remapSpansAfterWrap(plain, spans, childWidth, baseLineIndex + lineOffset);
+          for (const span of remapped) {
+            out.push({ ...span, colStart: span.colStart + prefixLen, colEnd: span.colEnd + prefixLen });
+          }
+          lineOffset += wrapLine(text, childWidth).length;
+          break;
         }
-        lineOffset += wrapped.length;
-      } else if (child.type === 'list') {
-        const innerLines = renderListItems(child as List, width, depth + 1).length;
-        collectListLinks(child as List, baseLineIndex + lineOffset, width, out, depth + 1);
-        lineOffset += innerLines;
+        case 'list': {
+          const l = child as List;
+          const innerLines = renderListItems(l, width, depth + 1).length;
+          collectListLinks(l, baseLineIndex + lineOffset, width, out, depth + 1);
+          lineOffset += innerLines;
+          break;
+        }
+        case 'blockquote': {
+          const bq = child as Blockquote;
+          const innerLines = renderBlockquote(bq, childWidth).length;
+          collectBlockquoteLinks(bq, baseLineIndex + lineOffset, childWidth, out);
+          lineOffset += innerLines;
+          break;
+        }
+        case 'heading': {
+          const h = child as Heading;
+          const { text, spans } = renderInlinesTracked(h.children as PhrasingContent[]);
+          const textOffset = h.depth === 1 ? 2 : 1;
+          for (const span of spans) {
+            out.push({
+              lineIndex: baseLineIndex + lineOffset + textOffset,
+              colStart: prefixLen + (h.depth === 1 ? 2 : (h.depth === 3 ? 2 : 0)) + span.colStart,
+              colEnd: prefixLen + (h.depth === 1 ? 2 : (h.depth === 3 ? 2 : 0)) + span.colEnd,
+              url: span.url,
+            });
+          }
+          lineOffset += renderHeading(h, childWidth).length;
+          break;
+        }
+        case 'code':
+          lineOffset += renderCode(child as Code, childWidth).length;
+          break;
+        case 'table':
+          lineOffset += renderTable(child as Table, childWidth).length;
+          break;
+        case 'thematicBreak':
+          lineOffset += renderHr(childWidth).length;
+          break;
+        default:
+          break;
       }
     }
   }

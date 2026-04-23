@@ -17,6 +17,22 @@ A longer paragraph to test word wrapping behavior. The quick brown fox jumps ove
 > A blockquote with **bold** and _italic_ and `code` inside it.
 > It can span multiple lines and should render with a colored left border.
 
+> ### Heading inside blockquote
+> - List item 1
+> - List item 2
+>   - Nested list
+>
+> 1. Ordered 1
+> 2. Ordered 2
+>
+> | Table | Inside |
+> | ----- | ------ |
+> | Row 1 | Cell 2 |
+>
+> ```js
+> console.log("Code block inside blockquote");
+> ```
+
 > Nested blockquote level one.
 >
 > > Nested blockquote level two, indented further.
