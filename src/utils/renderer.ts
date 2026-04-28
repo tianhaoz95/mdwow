@@ -440,33 +440,33 @@ function renderTable(node: Table, width: number): string[] {
   const rows = node.children as TableRow[];
   if (rows.length === 0) return [];
 
-  function getCellText(cell: TableCell): string {
-    return (cell.children as PhrasingContent[])
-      .map((n) => {
-        if (n.type === 'text') return (n as MdastText).value;
-        if ('children' in n) return (n as { children: PhrasingContent[] }).children.map(c => {
-          if (c.type === 'text') return (c as MdastText).value;
-          return '';
-        }).join('');
-        return '';
-      })
-      .join('');
+  function getCellStyled(cell: TableCell): string {
+    return (cell.children as PhrasingContent[]).map(renderInline).join('');
+  }
+
+  function getCellPlain(cell: TableCell): string {
+    return stripAnsi(getCellStyled(cell));
   }
 
   const colWidths: number[] = [];
   rows.forEach((row) => {
     (row.children as TableCell[]).forEach((cell, ci) => {
-      colWidths[ci] = Math.max(colWidths[ci] ?? 0, getCellText(cell).length, 3);
+      colWidths[ci] = Math.max(colWidths[ci] ?? 0, getCellPlain(cell).length, 3);
     });
   });
 
-  const pad = (s: string, w: number) => s + ' '.repeat(Math.max(0, w - s.length));
+  const padStyled = (styled: string, w: number) =>
+    styled + ' '.repeat(Math.max(0, w - visibleLength(styled)));
   const sep = chalk[T.tableBorder]('├' + colWidths.map((w) => '─'.repeat(w + 2)).join('┼') + '┤');
 
   const renderRow = (row: TableRow, isHeader: boolean): string => {
     const cells = (row.children as TableCell[]).map((cell, ci) => {
-      const t = pad(getCellText(cell), colWidths[ci] ?? 0);
-      return isHeader ? chalk.bold[T.tableHeader](t) : chalk[T.tableCell](t);
+      const w = colWidths[ci] ?? 0;
+      if (isHeader) {
+        const plain = getCellPlain(cell);
+        return chalk.bold[T.tableHeader](plain) + ' '.repeat(Math.max(0, w - plain.length));
+      }
+      return padStyled(getCellStyled(cell), w);
     });
     return chalk[T.tableBorder]('│') + cells.map((c) => ' ' + c + ' ' + chalk[T.tableBorder]('│')).join('');
   };
