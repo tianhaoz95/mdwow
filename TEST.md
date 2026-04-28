@@ -170,6 +170,15 @@ print(fibonacci(10))
 | Syntax highlight | ⏳ Soon  | Planned for v2               |
 | Remote URLs      | ❌ No    | Local files only             |
 
+### Inline Code in Cells
+
+| Agent CLI       | Invocation                                                    |
+|-----------------|---------------------------------------------------------------|
+| Claude Code     | `claude --print "..." --allowedTools ...`                     |
+| Aider           | `aider --model claude-3-7-sonnet --message "..."`             |
+| Gemini CLI      | `gemini -p "..."`                                             |
+| OpenHands       | `openhands run --task-file task.md`                           |
+
 ---
 
 ## Links and Images
