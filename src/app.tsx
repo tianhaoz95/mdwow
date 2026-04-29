@@ -11,9 +11,11 @@ import { useFileWatcher } from './hooks/useFileWatcher.js';
 import { useMouseScroll } from './hooks/useMouseScroll.js';
 import { useToc } from './hooks/useToc.js';
 import { useFloatingPreview } from './hooks/useFloatingPreview.js';
+import { useSearch } from './hooks/useSearch.js';
 import { parseMarkdown } from './utils/parser.js';
 import { renderToLinesWithLinks, buildToc, setRendererTheme } from './utils/renderer.js';
 import { parseSgrMouse } from './utils/mouse.js';
+import { highlightQuery } from './utils/ansi.js';
 import { darkRendererTheme, lightRendererTheme, darkInkTheme, lightInkTheme, type ThemeMode } from './themes.js';
 import type { LinkSpan } from './utils/renderer.js';
 
@@ -100,6 +102,15 @@ export function App({ filePath }: AppProps) {
     [maxScroll],
   );
 
+  const search = useSearch(lines);
+
+  // Scroll to current search match whenever it changes
+  useEffect(() => {
+    if (search.currentLineIndex !== null) {
+      setScrollOffset(clamp(search.currentLineIndex));
+    }
+  }, [search.currentLineIndex, clamp]);
+
   useMouseScroll();
 
   // Floating preview visible lines for its own scroll calculations
@@ -137,6 +148,23 @@ export function App({ filePath }: AppProps) {
       }
       return; // swallow everything else
     }
+
+    // Search mode — must be handled before global bindings so that characters
+    // like 'q', 'j', 'k', 'b', etc. are captured as search input.
+    if (search.isActive) {
+      if (key.escape) { search.deactivate(); return; }
+      if (key.return) { search.nextMatch(); return; }
+      if (key.backspace || key.delete) { search.backspace(); return; }
+      // Append any printable character
+      if (input.length === 1 && !key.ctrl && input >= ' ') {
+        search.appendChar(input);
+        return;
+      }
+      return; // swallow unrecognised keys while in search mode
+    }
+
+    // Activate search
+    if (input === '/') { search.activate(); return; }
 
     if (input === 'q') { exit(); return; }
 
@@ -249,7 +277,7 @@ export function App({ filePath }: AppProps) {
       if (input === 'G') return clamp(maxScroll);
       return prev;
     });
-  }, [exit, preview, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath]);
+  }, [exit, preview, search, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath]);
 
   if (isRawModeSupported) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -259,13 +287,30 @@ export function App({ filePath }: AppProps) {
   const visibleContent = lines.slice(scrollOffset, scrollOffset + visibleLines);
   const filename = basename(filePath);
 
+  // Apply search highlighting to matching visible lines.
+  // The current match gets bold+inverse; other matches get plain inverse.
+  const currentMatchLine = search.matchLineIndices[search.currentMatchIndex] ?? -1;
+  const matchSet = search.isActive && search.query
+    ? new Set(search.matchLineIndices)
+    : null;
+  const displayContent = matchSet
+    ? visibleContent.map((line, i) => {
+        const absIdx = scrollOffset + i;
+        if (!matchSet.has(absIdx)) return line;
+        const isCurrent = absIdx === currentMatchLine;
+        return isCurrent
+          ? highlightQuery(line, search.query, '\x1b[7m\x1b[1m', '\x1b[27m\x1b[22m')
+          : highlightQuery(line, search.query);
+      })
+    : visibleContent;
+
   const contentBox = error ? (
     <ErrorView message={error} />
   ) : !ast ? (
     <Box padding={2}><Text dimColor>Loading...</Text></Box>
   ) : (
     <Box flexDirection="column" marginLeft={leftMargin} width={clampedWidth}>
-      {visibleContent.map((line, i) => (
+      {displayContent.map((line, i) => (
         <Text key={scrollOffset + i} wrap="truncate-end">{line || ' '}</Text>
       ))}
     </Box>
@@ -299,6 +344,10 @@ export function App({ filePath }: AppProps) {
         hoveredLink={hoveredLink}
         themeMode={themeMode}
         inkTheme={inkTheme}
+        searchActive={search.isActive}
+        searchQuery={search.query}
+        searchMatchCount={search.matchCount}
+        searchCurrentIndex={search.currentMatchIndex}
       />
 
       {/* Floating markdown preview — rendered last so it layers on top */}
