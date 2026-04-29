@@ -11,6 +11,10 @@ type StatusBarProps = {
   hoveredLink: string | null;
   themeMode: 'dark' | 'light';
   inkTheme: InkTheme;
+  searchActive: boolean;
+  searchQuery: string;
+  searchMatchCount: number;
+  searchCurrentIndex: number;
 };
 
 type HintProps = {
@@ -42,6 +46,10 @@ export function StatusBar({
   hoveredLink,
   themeMode,
   inkTheme: t,
+  searchActive,
+  searchQuery,
+  searchMatchCount,
+  searchCurrentIndex,
 }: StatusBarProps) {
   const currentLine = Math.min(scrollOffset + 1, totalLines);
   const scrollPercent =
@@ -53,9 +61,20 @@ export function StatusBar({
 
   return (
     <Box flexDirection="column" borderStyle="single" borderColor={t.borderColor}>
-      {/* Link URL row */}
+      {/* Search input row (replaces link row when search is active) */}
       <Box paddingX={1}>
-        {hoveredLink ? (
+        {searchActive ? (
+          <>
+            <Text color="yellowBright" bold>{'/ '}</Text>
+            <Text color="whiteBright">{searchQuery}</Text>
+            <Text color="yellowBright">{'█'}</Text>
+            {searchMatchCount > 0 ? (
+              <Text dimColor>{`  (${searchCurrentIndex + 1}/${searchMatchCount})`}</Text>
+            ) : searchQuery.length > 0 ? (
+              <Text color="redBright" dimColor>{'  (no matches)'}</Text>
+            ) : null}
+          </>
+        ) : hoveredLink ? (
           <>
             <Text color="cyanBright">{'🔗 '}</Text>
             <Text color={t.link.color} underline>{truncateUrl(hoveredLink, 80)}</Text>
@@ -74,6 +93,7 @@ export function StatusBar({
           <Hint keys="+/-"    label="width"  t={t} />
           <Hint keys="b"      label={tocOpen ? 'close toc' : 'toc'} t={t} />
           <Hint keys="t"      label={themeLabel} t={t} />
+          <Hint keys="/"      label="search" t={t} />
           <Hint keys="q"      label="quit"   t={t} />
         </Box>
         <Box gap={2}>

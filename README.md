@@ -1,6 +1,7 @@
 # mdwow
 
 [![CI](https://github.com/tianhaoz95/mdwow/actions/workflows/ci.yml/badge.svg)](https://github.com/tianhaoz95/mdwow/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/mdwow-cli)](https://www.npmjs.com/package/mdwow-cli)
 
 A beautiful, live Markdown viewer for the terminal. Open any `.md` file and get a rich, colorful TUI preview that **auto-updates** whenever the file changes on disk.
 
