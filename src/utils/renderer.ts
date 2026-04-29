@@ -199,7 +199,7 @@ function stripAnsi(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
-function visibleLength(s: string): number {
+export function visibleLength(s: string): number {
   return stripAnsi(s).length;
 }
 
