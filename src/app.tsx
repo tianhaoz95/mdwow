@@ -13,9 +13,11 @@ import { useToc } from './hooks/useToc.js';
 import { useFloatingPreview } from './hooks/useFloatingPreview.js';
 import { useSearch } from './hooks/useSearch.js';
 import { parseMarkdown } from './utils/parser.js';
-import { renderToLinesWithLinks, buildToc, setRendererTheme } from './utils/renderer.js';
+import { renderToLinesWithLinks, buildToc, setRendererTheme, visibleLength } from './utils/renderer.js';
 import { parseSgrMouse } from './utils/mouse.js';
-import { highlightQuery } from './utils/ansi.js';
+import { highlightQuery, applySelectionHighlight } from './utils/ansi.js';
+import { useTextSelection, type SelectionPoint } from './hooks/useTextSelection.js';
+import clipboard from 'clipboardy';
 import { darkRendererTheme, lightRendererTheme, darkInkTheme, lightInkTheme, type ThemeMode } from './themes.js';
 import type { LinkSpan } from './utils/renderer.js';
 
@@ -33,6 +35,27 @@ type AppProps = {
 };
 
 const WIDTH_STEP = 10;
+
+function applySelectionHighlightToLine(
+  line: string,
+  absIdx: number,
+  start: SelectionPoint,
+  end: SelectionPoint,
+): string {
+  let topPt = start, bottomPt = end;
+  if (
+    topPt.line > bottomPt.line ||
+    (topPt.line === bottomPt.line && topPt.col > bottomPt.col)
+  ) {
+    [topPt, bottomPt] = [bottomPt, topPt];
+  }
+  if (absIdx < topPt.line || absIdx > bottomPt.line) return line;
+  const len = visibleLength(line);
+  if (topPt.line === bottomPt.line) return applySelectionHighlight(line, topPt.col, bottomPt.col);
+  if (absIdx === topPt.line)        return applySelectionHighlight(line, topPt.col, len);
+  if (absIdx === bottomPt.line)     return applySelectionHighlight(line, 0, bottomPt.col);
+  return applySelectionHighlight(line, 0, len);
+}
 
 export function App({ filePath }: AppProps) {
   const { exit } = useApp();
@@ -57,6 +80,7 @@ export function App({ filePath }: AppProps) {
 
   const [scrollOffset, setScrollOffset] = useState(0);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [copiedFlash, setCopiedFlash] = useState(false);
   const preview = useFloatingPreview();
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark');
   const inkTheme = themeMode === 'dark' ? darkInkTheme : lightInkTheme;
@@ -103,6 +127,7 @@ export function App({ filePath }: AppProps) {
   );
 
   const search = useSearch(lines);
+  const selection = useTextSelection(lines);
 
   // Scroll to current search match whenever it changes
   useEffect(() => {
@@ -110,6 +135,9 @@ export function App({ filePath }: AppProps) {
       setScrollOffset(clamp(search.currentLineIndex));
     }
   }, [search.currentLineIndex, clamp]);
+
+  // Clear selection when file content changes
+  useEffect(() => { selection.clearSelection(); }, [content]);
 
   useMouseScroll();
 
@@ -166,64 +194,84 @@ export function App({ filePath }: AppProps) {
     // Activate search
     if (input === '/') { search.activate(); return; }
 
+    // Escape clears an active selection
+    if (key.escape && selection.selectionStart !== null) { selection.clearSelection(); return; }
+
     if (input === 'q') { exit(); return; }
 
     // Mouse events
     if (input.startsWith('[<')) {
       const mouse = parseSgrMouse(Buffer.from(input));
-      if (mouse?.type === 'scroll_up')   setScrollOffset((prev) => clamp(prev - 3));
-      if (mouse?.type === 'scroll_down') setScrollOffset((prev) => clamp(prev + 3));
+      if (!mouse) return;
 
-      // Resolve mouse position to a link span
+      if (mouse.type === 'scroll_up')   { setScrollOffset((prev) => clamp(prev - 3)); return; }
+      if (mouse.type === 'scroll_down') { setScrollOffset((prev) => clamp(prev + 3)); return; }
+
+      const lineIndex = scrollOffset + (mouse.y - 3);
+      const col = mouse.x - 1 - leftMargin;
+
       const resolveLinkAtMouse = () => {
         if (sidebarOpen) return null;
-        const lineIndex = scrollOffset + (mouse!.y - 3);
-        const col = mouse!.x - 1 - leftMargin;
         return links.find(
           (l) => l.lineIndex === lineIndex && col >= l.colStart && col < l.colEnd,
         ) ?? null;
       };
 
-      // Hover: show URL when over a link, but don't clear when moving away
-      if (mouse?.type === 'move') {
+      if (mouse.type === 'move') {
         const hit = resolveLinkAtMouse();
         if (hit) setHoveredLink(hit.url);
+        if (selection.isSelecting) selection.updateSelection(lineIndex, col);
         return;
       }
 
-      // Click: handle link clicks
-      if (mouse?.type === 'press' && !sidebarOpen) {
-        const hit = resolveLinkAtMouse();
-        if (hit) {
-          const mdPath = resolveMarkdownLink(hit.url, filePath);
-          if (mdPath) {
-            preview.open(mdPath);
-          } else {
-            setHoveredLink(hit.url);
+      if (mouse.type === 'press' && mouse.button === 0) {
+        // Sidebar click
+        if (sidebarOpen && mouse.x <= SIDEBAR_WIDTH) {
+          const sidebarVisibleRows = Math.max(1, visibleLines - 6);
+          const scrollStart = Math.max(
+            0,
+            Math.min(
+              toc.cursorIndex - Math.floor(sidebarVisibleRows / 2),
+              tocEntries.length - sidebarVisibleRows,
+            ),
+          );
+          const clickedEntryIndex = scrollStart + (mouse.y - 5);
+          if (clickedEntryIndex >= 0 && clickedEntryIndex < tocEntries.length) {
+            toc.setCursor(clickedEntryIndex);
+            const entry = tocEntries[clickedEntryIndex];
+            if (entry) setScrollOffset(clamp(entry.lineIndex));
           }
-        } else {
-          setHoveredLink(null);
+          return;
         }
+
+        if (!sidebarOpen) {
+          const hit = resolveLinkAtMouse();
+          if (hit) {
+            // Link click — do not start selection
+            const mdPath = resolveMarkdownLink(hit.url, filePath);
+            if (mdPath) preview.open(mdPath); else setHoveredLink(hit.url);
+            return;
+          }
+          setHoveredLink(null);
+          selection.startSelection(lineIndex, col);
+        }
+        return;
       }
 
-      // Click in sidebar
-      if (mouse?.type === 'press' && sidebarOpen && mouse.x <= SIDEBAR_WIDTH) {
-        const sidebarVisibleRows = Math.max(1, visibleLines - 6);
-        const scrollStart = Math.max(
-          0,
-          Math.min(
-            toc.cursorIndex - Math.floor(sidebarVisibleRows / 2),
-            tocEntries.length - sidebarVisibleRows,
-          ),
-        );
-        const entryRow = mouse.y - 5;
-        const clickedEntryIndex = scrollStart + entryRow;
-        if (clickedEntryIndex >= 0 && clickedEntryIndex < tocEntries.length) {
-          toc.setCursor(clickedEntryIndex);
-          const entry = tocEntries[clickedEntryIndex];
-          if (entry) setScrollOffset(clamp(entry.lineIndex));
+      if (mouse.type === 'release' && mouse.button === 0 && selection.isSelecting) {
+        const text = selection.endSelection(lineIndex, col);
+        if (text.trim().length > 0) {
+          clipboard.write(text).then(() => {
+            setCopiedFlash(true);
+            setTimeout(() => setCopiedFlash(false), 1500);
+            setTimeout(() => selection.clearSelection(), 1600);
+          }).catch(() => selection.clearSelection());
+        } else {
+          selection.clearSelection();
         }
+        return;
       }
+
       return;
     }
 
@@ -277,7 +325,7 @@ export function App({ filePath }: AppProps) {
       if (input === 'G') return clamp(maxScroll);
       return prev;
     });
-  }, [exit, preview, search, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath]);
+  }, [exit, preview, search, selection, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath]);
 
   if (isRawModeSupported) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -293,7 +341,7 @@ export function App({ filePath }: AppProps) {
   const matchSet = search.isActive && search.query
     ? new Set(search.matchLineIndices)
     : null;
-  const displayContent = matchSet
+  const searchContent = matchSet
     ? visibleContent.map((line, i) => {
         const absIdx = scrollOffset + i;
         if (!matchSet.has(absIdx)) return line;
@@ -303,6 +351,16 @@ export function App({ filePath }: AppProps) {
           : highlightQuery(line, search.query);
       })
     : visibleContent;
+
+  const hasSelection = selection.selectionStart !== null && selection.selectionEnd !== null;
+  const displayContent = hasSelection
+    ? searchContent.map((line, i) => {
+        const absIdx = scrollOffset + i;
+        return applySelectionHighlightToLine(
+          line, absIdx, selection.selectionStart!, selection.selectionEnd!,
+        );
+      })
+    : searchContent;
 
   const contentBox = error ? (
     <ErrorView message={error} />
@@ -348,6 +406,7 @@ export function App({ filePath }: AppProps) {
         searchQuery={search.query}
         searchMatchCount={search.matchCount}
         searchCurrentIndex={search.currentMatchIndex}
+        copiedFlash={copiedFlash}
       />
 
       {/* Floating markdown preview — rendered last so it layers on top */}
