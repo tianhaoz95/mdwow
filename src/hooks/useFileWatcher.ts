@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { readFileSync } from 'fs';
 import chokidar from 'chokidar';
 
@@ -7,6 +7,7 @@ export type FileWatcherState = {
   error: string | null;
   lastUpdated: Date | null;
   isWatching: boolean;
+  reload: () => void;
 };
 
 function readFile(filePath: string): { content: string; error: null } | { content: null; error: string } {
@@ -27,20 +28,32 @@ export function useFileWatcher(filePath: string): FileWatcherState {
       error,
       lastUpdated: content ? new Date() : null,
       isWatching: false,
+      reload: () => {},
     };
   });
 
   const watcherRef = useRef<ReturnType<typeof chokidar.watch> | null>(null);
 
+  const reload = useCallback(() => {
+    const { content, error } = readFile(filePath);
+    setState((prev) => ({
+      ...prev,
+      content,
+      error,
+      lastUpdated: content ? new Date() : prev.lastUpdated,
+    }));
+  }, [filePath]);
+
   useEffect(() => {
     // Initial read
     const { content, error } = readFile(filePath);
-    setState({
+    setState((prev) => ({
+      ...prev,
       content,
       error,
       lastUpdated: content ? new Date() : null,
       isWatching: true,
-    });
+    }));
 
     // Set up watcher
     const watcher = chokidar.watch(filePath, {
@@ -54,12 +67,13 @@ export function useFileWatcher(filePath: string): FileWatcherState {
 
     watcher.on('change', () => {
       const { content: newContent, error: newError } = readFile(filePath);
-      setState({
+      setState((prev) => ({
+        ...prev,
         content: newContent,
         error: newError,
         lastUpdated: newContent ? new Date() : null,
         isWatching: true,
-      });
+      }));
     });
 
     watcher.on('unlink', () => {
@@ -85,5 +99,5 @@ export function useFileWatcher(filePath: string): FileWatcherState {
     };
   }, [filePath]);
 
-  return state;
+  return { ...state, reload };
 }

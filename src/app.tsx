@@ -68,7 +68,7 @@ export function App({ filePath }: AppProps) {
   // We always reserve 4 for status to avoid layout jump on hover.
   const visibleLines = Math.max(1, terminalHeight - 7);
 
-  const { content, error, lastUpdated, isWatching } = useFileWatcher(filePath);
+  const { content, error, lastUpdated, isWatching, reload } = useFileWatcher(filePath);
 
   const [readingWidth, setReadingWidth] = useState<number | null>(null);
 
@@ -197,6 +197,7 @@ export function App({ filePath }: AppProps) {
     // Escape clears an active selection
     if (key.escape && selection.selectionStart !== null) { selection.clearSelection(); return; }
 
+    if (input === 'r') { reload(); return; }
     if (input === 'q') { exit(); return; }
 
     // Mouse events
@@ -325,7 +326,7 @@ export function App({ filePath }: AppProps) {
       if (input === 'G') return clamp(maxScroll);
       return prev;
     });
-  }, [exit, preview, search, selection, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath]);
+  }, [exit, preview, search, selection, scrollOffset, sidebarOpen, toc, tocEntries, links, leftMargin, contentAreaWidth, visibleLines, maxScroll, clamp, filePath, reload]);
 
   if (isRawModeSupported) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
