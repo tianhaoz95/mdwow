@@ -15,6 +15,7 @@ type StatusBarProps = {
   searchQuery: string;
   searchMatchCount: number;
   searchCurrentIndex: number;
+  copiedFlash: boolean;
 };
 
 type HintProps = {
@@ -50,6 +51,7 @@ export function StatusBar({
   searchQuery,
   searchMatchCount,
   searchCurrentIndex,
+  copiedFlash,
 }: StatusBarProps) {
   const currentLine = Math.min(scrollOffset + 1, totalLines);
   const scrollPercent =
@@ -74,6 +76,8 @@ export function StatusBar({
               <Text color="redBright" dimColor>{'  (no matches)'}</Text>
             ) : null}
           </>
+        ) : copiedFlash ? (
+          <Text color="greenBright" bold>{'✓ Copied!'}</Text>
         ) : hoveredLink ? (
           <>
             <Text color="cyanBright">{'🔗 '}</Text>

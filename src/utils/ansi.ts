@@ -76,3 +76,38 @@ export function highlightQuery(
 
   return result;
 }
+
+/**
+ * Apply inverse-video highlight to the visible column range [colStart, colEnd)
+ * in an ANSI-coloured string. colStart and colEnd are plain-text (visible)
+ * column indices, 0-based. colEnd is exclusive.
+ */
+export function applySelectionHighlight(
+  ansiLine: string,
+  colStart: number,
+  colEnd:   number,
+): string {
+  if (colStart >= colEnd) return ansiLine;
+  const plain = stripAnsi(ansiLine);
+  if (colStart >= plain.length) return ansiLine;
+  const effectiveEnd = Math.min(colEnd, plain.length);
+  const on = '\x1b[7m', off = '\x1b[27m';
+  let result = '', plainIdx = 0, inHL = false;
+
+  for (let i = 0; i < ansiLine.length; ) {
+    if (ansiLine[i] === '\x1b' && ansiLine[i + 1] === '[') {
+      let j = i + 2;
+      while (j < ansiLine.length && ansiLine[j] !== 'm') j++;
+      result += ansiLine.slice(i, j + 1);
+      i = j + 1;
+      continue;
+    }
+    if (plainIdx === colStart && !inHL) { result += on; inHL = true; }
+    result += ansiLine[i++];
+    plainIdx++;
+    if (inHL && plainIdx === effectiveEnd) { result += off; inHL = false; }
+  }
+
+  if (inHL) result += off;
+  return result;
+}
