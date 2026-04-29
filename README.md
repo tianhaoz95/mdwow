@@ -73,6 +73,7 @@ mdwow ~/notes/todo.md
 | `Enter` | Next search match (while searching) |
 | `Esc` | Exit search / clear selection / close preview |
 | `t` | Toggle dark / light theme |
+| `r` | Manual reload (re-read file from disk) |
 | `+` | Widen content column |
 | `-` | Narrow content column |
 | `0` | Reset content width |

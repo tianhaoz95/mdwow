@@ -98,6 +98,7 @@ export function StatusBar({
           <Hint keys="b"      label={tocOpen ? 'close toc' : 'toc'} t={t} />
           <Hint keys="t"      label={themeLabel} t={t} />
           <Hint keys="/"      label="search" t={t} />
+          <Hint keys="r"      label="reload" t={t} />
           <Hint keys="q"      label="quit"   t={t} />
         </Box>
         <Box gap={2}>
